@@ -28,20 +28,15 @@ import time
 import math
 
 from mmfe8_userRegs import userRegs
-from vmm            import VMM
+from vmm            import VMM, registers
 from udp            import udp_stuff
+from channel        import index
 
 nvmms = 8
+nchannels = 64
 
-############################################################################
-############################################################################
-###############################               ##############################
-###############################  MMFE8 CLASS  ##############################
-###############################               ##############################
-############################################################################
-############################################################################
 
-class MMFE8:
+class GUI:
     """
     """
 
@@ -292,9 +287,15 @@ class MMFE8:
         self.control[3] = 0
         self.write_control()
 
+    def convert_to_int(self, list_of_bits):
+        this = "0b"
+        for bit in list_of_bits:
+            this += str(bit)
+        return int(this, base=2)
+
     def convert_to_32bit(self, list_of_bits):
         return sum([int(list_of_bits[bit])*pow(2, bit) for bit in xrange(32)])
-    
+
     def write_control(self):
         message = "w 0x44A100FC 0x{0:X}".format(self.convert_to_32bit(self.control))
         self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
@@ -374,21 +375,10 @@ class MMFE8:
         self.notebook = gtk.Notebook()
         self.notebook.set_tab_pos(gtk.POS_TOP)
         # self.notebook.modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse("#FFFFFF"))
-        #self.tab_label_1 = gtk.Label("VMM 1")
         self.tab_label_1 = gtk.Label("MMFE 0")
-        self.tab_label_2 = gtk.Label("VMM 2")
-        self.tab_label_3 = gtk.Label("VMM 3")
-        self.tab_label_4 = gtk.Label("VMM 4")
-        self.tab_label_5 = gtk.Label("VMM 5")
-        self.tab_label_6 = gtk.Label("VMM 6")
-        self.tab_label_7 = gtk.Label("VMM 7")
-        self.tab_label_8 = gtk.Label("VMM 8")
         self.tab_label_9 = gtk.Label("User Defined")
-        #self.tab_label_10 = gtk.Label("VMM Output")
-        #print "loading Registers..."
         self.VMM = []
         for i in range(8):
-            # self.VMM.append(vmm())
             self.VMM.append(VMM())
         self.udp = udp_stuff()
         self.ipAddr = ["127.0.0.1",
@@ -408,26 +398,25 @@ class MMFE8:
                        "192.168.0.167",
                        ]
 
-        # each is the starting address for the 51 config regs for each vmm 
         self.mmfeID = 0
-        #self.vmmGlobalReset = np.zeros((32), dtype=int)                #0x44A100EC  #vmm_global_reset          #reset & vmm_gbl_rst_i & vmm_cfg_en_vec( 7 downto 0)
-        #self.vmm_cfg_sel_reg = np.zeros((32), dtype=int)               #0x44A100EC  #vmm_cfg_sel               #vmm_2display_i(16 downto 12) & mmfeID(11 downto 8) & vmm_readout_i(7 downto 0)
-        self.vmm_cfg_sel = np.zeros((32), dtype=int)                    #0x44A100EC  #vmm_cfg_sel               #vmm_2display_i(16 downto 12) & mmfeID(11 downto 8) & vmm_readout_i(7 downto 0)
-        self.cktp_period_dutycycle = np.zeros((32), dtype=int)          #0x44A100F0  #cktp_period_dutycycle     #clk_tp_period_cnt(15 downto 0) & clk_tp_dutycycle_cnt(15 downto 0)
+        #self.vmmGlobalReset = np.zeros((32), dtype=int)         #0x44A100EC  #vmm_global_reset          #reset & vmm_gbl_rst_i & vmm_cfg_en_vec( 7 downto 0)
+        #self.vmm_cfg_sel_reg = np.zeros((32), dtype=int)        #0x44A100EC  #vmm_cfg_sel               #vmm_2display_i(16 downto 12) & mmfeID(11 downto 8) & vmm_readout_i(7 downto 0)
+        self.vmm_cfg_sel = np.zeros((32), dtype=int)             #0x44A100EC  #vmm_cfg_sel               #vmm_2display_i(16 downto 12) & mmfeID(11 downto 8) & vmm_readout_i(7 downto 0)
+        self.cktp_period_dutycycle = np.zeros((32), dtype=int)   #0x44A100F0  #cktp_period_dutycycle     #clk_tp_period_cnt(15 downto 0) & clk_tp_dutycycle_cnt(15 downto 0)
         #self.start_mmfe8 = np.zeros((32), dtype=int)
-        self.readout_runlength = np.zeros((32), dtype=int)                      #0x44A100F4  #ReadOut_RunLength         #ext_trigger_in_sel(26)&axi_data_to_use(25)&int_trig(24)&vmm_readout_i(23 downto 16)&pulses(15 downto 0)
-        self.acq_count_runlength = np.zeros((32), dtype=int)            #0x44A10120  #counts_to_acq_reset       #counts_to_acq_reset( 31 downto 0)
-        self.acq_hold_runlength = np.zeros((32), dtype=int)             #0x44A10120  #counts_to_acq_hold        #counts_to_hold_acq_reset( 31 downto 0)
-        self.xadc = np.zeros((32), dtype=int)                           #0x44A100F8  #xadc                      #read
-        self.admux = np.zeros((32), dtype=int)                          #0x44A100F8  #admux                     #write
-        self.control = np.zeros((32), dtype=int)                                #0x44A100FC  #was vmm_global_reset      #reset & vmm_gbl_rst_i & vmm_cfg_en_vec( 7 downto 0)
-        #self.system_init = np.zeros((32), dtype=int)                   #0x44A10100  #axi_reg_60( 0)            #original reset
-        #self.userRegs = userRegs()                                     #0x44A10104,08,0C,00,14                 #user_reg_1 #user_reg_2 #user_reg_3 #user_reg_4         
-        self.userRegs = userRegs()                                      #0x44A10104,08,0C,00,14                 #user_reg_1 #user_reg_2 #user_reg_3 #user_reg_4 #user_reg_5
-        self.ds2411_low = np.zeros((32), dtype=int)                     #0x44A10118  #DS411_low                 #Low
-        self.ds2411_high = np.zeros((32), dtype=int)                    #0x44A1011C  #DS411_high                #High
-        self.counts_to_acq_reset = np.zeros((32), dtype=int)            #0x44A10120  #counts_to_acq_reset       #0 to FFFF_FFFF #0=Not Used
-        self.counts_to_acq_hold = np.zeros((32), dtype=int)            #0x44A10120  #counts_to_hold_acq_reset       #0 to FFFF_FFFF #0=Not Used
+        self.readout_runlength = np.zeros((32), dtype=int)               #0x44A100F4  #ReadOut_RunLength         #ext_trigger_in_sel(26)&axi_data_to_use(25)&int_trig(24)&vmm_readout_i(23 downto 16)&pulses(15 downto 0)
+        self.acq_count_runlength = np.zeros((32), dtype=int)     #0x44A10120  #counts_to_acq_reset       #counts_to_acq_reset( 31 downto 0)
+        self.acq_hold_runlength = np.zeros((32), dtype=int)      #0x44A10120  #counts_to_acq_hold        #counts_to_hold_acq_reset( 31 downto 0)
+        self.xadc = np.zeros((32), dtype=int)                    #0x44A100F8  #xadc                      #read
+        self.admux = np.zeros((32), dtype=int)                   #0x44A100F8  #admux                     #write
+        self.control = np.zeros((32), dtype=int)                         #0x44A100FC  #was vmm_global_reset      #reset & vmm_gbl_rst_i & vmm_cfg_en_vec( 7 downto 0)
+        #self.system_init = np.zeros((32), dtype=int)            #0x44A10100  #axi_reg_60( 0)            #original reset
+        #self.userRegs = userRegs()                              #0x44A10104,08,0C,00,14                 #user_reg_1 #user_reg_2 #user_reg_3 #user_reg_4         
+        self.userRegs = userRegs()                               #0x44A10104,08,0C,00,14                 #user_reg_1 #user_reg_2 #user_reg_3 #user_reg_4 #user_reg_5
+        self.ds2411_low = np.zeros((32), dtype=int)              #0x44A10118  #DS411_low                 #Low
+        self.ds2411_high = np.zeros((32), dtype=int)             #0x44A1011C  #DS411_high                #High
+        self.counts_to_acq_reset = np.zeros((32), dtype=int)     #0x44A10120  #counts_to_acq_reset       #0 to FFFF_FFFF #0=Not Used
+        self.counts_to_acq_hold = np.zeros((32), dtype=int)      #0x44A10120  #counts_to_hold_acq_reset       #0 to FFFF_FFFF #0=Not Used
         self.terminate = 0                    
         self.UDP_PORT = 50001
         self.UDP_IP = ""
@@ -435,12 +424,7 @@ class MMFE8:
         self.byteint = np.zeros((51), dtype=np.uint32)
         self.byteword = np.zeros((32), dtype=int)
 
-        ####################################################
-        ##                    GUI   
-        ##                   GLOBAL  
-        ##                   BUTTONS 
-        ####################################################
-
+        # GUI global buttons
         self.button_add_mmfe = gtk.Button("Add MMFE")
         self.button_add_mmfe.set_size_request(-1,-1)
         self.button_add_mmfe.modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse("#ADD8E6"))
@@ -613,6 +597,17 @@ class MMFE8:
         self.box_mmfe_global = gtk.HBox()
         self.box_mmfe_global.pack_start(self.label_mmfe_global, expand=False)
 
+        self.label_mmfe_number = gtk.Label("VMM #")
+        self.label_mmfe_number.set_markup('<span color="red"><b>MMFE #</b></span>')
+        self.label_mmfe_number.set_justify(gtk.JUSTIFY_CENTER)
+        self.combo_mmfe_number = gtk.combo_box_new_text()
+        for immfe in xrange(1):
+            self.combo_mmfe_number.append_text(str(immfe))
+        self.combo_mmfe_number.set_active(0)
+        self.box_mmfe_number = gtk.HBox()
+        self.box_mmfe_number.pack_start(self.label_mmfe_number, expand=False)
+        self.box_mmfe_number.pack_start(self.combo_mmfe_number, expand=False)
+
         self.label_IP = gtk.Label("IP ADDRESS")
         self.label_IP.set_markup('<span color="red"><b>IP ADDRESS</b></span>')
         self.label_IP.set_justify(gtk.JUSTIFY_CENTER)
@@ -725,6 +720,7 @@ class MMFE8:
         self.box_mmfe.set_size_request(-1,-1)
 
         self.box_mmfe.pack_start(self.box_mmfe_global, expand=False)
+        self.box_mmfe.pack_start(self.box_mmfe_number, expand=False)
         self.box_mmfe.pack_start(self.label_IP,        expand=False)
         self.box_mmfe.pack_start(self.combo_IP,        expand=False)
 
@@ -742,82 +738,331 @@ class MMFE8:
         self.frame_mmfe.set_size_request(300, -1)
 
         self.page1_box = gtk.HBox(homogeneous=0, spacing=0)
-        self.page2_box = gtk.HBox(homogeneous=0, spacing=0)
-        self.page3_box = gtk.HBox(homogeneous=0, spacing=0)
-        self.page4_box = gtk.HBox(homogeneous=0, spacing=0)
-        self.page5_box = gtk.HBox(homogeneous=0, spacing=0)
-        self.page6_box = gtk.HBox(homogeneous=0, spacing=0)
-        self.page7_box = gtk.HBox(homogeneous=0, spacing=0)
-        self.page8_box = gtk.HBox(homogeneous=0, spacing=0)
-
         self.page1_box.pack_start(self.frame_mmfe)
+        # --------------------------------------------------------------------------------
 
-        self.page1_box.pack_start(self.VMM[0].box_all_variables, expand=True)
-        self.page2_box.pack_start(self.VMM[1].box_all_variables, expand=True)                     
-        self.page3_box.pack_start(self.VMM[2].box_all_variables, expand=True)  
-        self.page4_box.pack_start(self.VMM[3].box_all_variables, expand=True)  
-        self.page5_box.pack_start(self.VMM[4].box_all_variables, expand=True)   
-        self.page6_box.pack_start(self.VMM[5].box_all_variables, expand=True)  
-        self.page7_box.pack_start(self.VMM[6].box_all_variables, expand=True)  
-        self.page8_box.pack_start(self.VMM[7].box_all_variables, expand=True)  
+        self.vmm_header = gtk.Label("")
+        self.vmm_header.set_markup('<span color="green" size="18000"><b>VMM Configuration</b></span>')
 
-        self.page1_box.pack_start(self.VMM[0].box_all_channels, expand=False)
-        self.page2_box.pack_start(self.VMM[1].box_all_channels, expand=False)
-        self.page3_box.pack_start(self.VMM[2].box_all_channels, expand=False)
-        self.page4_box.pack_start(self.VMM[3].box_all_channels, expand=False)
-        self.page5_box.pack_start(self.VMM[4].box_all_channels, expand=False)
-        self.page6_box.pack_start(self.VMM[5].box_all_channels, expand=False)
-        self.page7_box.pack_start(self.VMM[6].box_all_channels, expand=False)
-        self.page8_box.pack_start(self.VMM[7].box_all_channels, expand=False)
+        self.vmm_number       = gtk.HBox()
+        self.vmm_number_label = gtk.Label("")
+        self.vmm_number_label.set_markup('<span color="green"><b>VMM #</b></span>')
+        self.vmm_number_combo = gtk.combo_box_new_text()
+        for ivmm in xrange(nvmms):
+            self.vmm_number_combo.append_text(str(ivmm))
+        self.vmm_number_combo.append_text("all")
+        self.vmm_number_combo.connect("changed", self.set_current_vmm)
+        for obj in [self.vmm_number_label, self.vmm_number_combo]:
+            self.vmm_number.pack_start(obj, expand=False)
 
-    #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    #
-    #                      START the GUI
-    #
-    #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        # create buttons
+        self.vmm_spg    = gtk.CheckButton("Input Charge Polarity (spg)")
+        self.vmm_sdp    = gtk.CheckButton("Disable-at-Peak (sdp)")
+        self.vmm_sbmx   = gtk.CheckButton("Route Analog Monitor to PDO Output (sbmx)")
+        self.vmm_sbft   = gtk.CheckButton("Analog Output Buffer, TDO (sbft)")
+        self.vmm_sbfp   = gtk.CheckButton("Analog Output Buffer, PDO (sbfp)")
+        self.vmm_sbfm   = gtk.CheckButton("Analog Output Buffer, MO (sbfm)")
+        self.vmm_slg    = gtk.CheckButton("Leakage Current Disable (slg)")
+        self.vmm_scmx   = gtk.CheckButton("SCMX")
+        self.vmm_sfa    = gtk.CheckButton("ART Enable (sfa)")
+        self.vmm_sfm    = gtk.CheckButton("SFM (doubles leakage current)")
+        self.vmm_sng    = gtk.CheckButton("Neighbor Triggering (sng)")
+        self.vmm_sttt   = gtk.CheckButton("Timing Outputs (sttt)")
+        self.vmm_ssh    = gtk.CheckButton("Sub-Hysteresis Discrimination (ssh)")
+        self.vmm_s8b    = gtk.CheckButton("8-bit ADC Mode (s8b)")
+        self.vmm_s6b    = gtk.CheckButton("6-bit ADC Mode (s6b) (disables 8 & 10 bit ADC)")
+        self.vmm_spdc   = gtk.CheckButton("ADCs Enable (spdc)")
+        self.vmm_sdcks  = gtk.CheckButton("Dual Clock Edge, Serialized Data Enable (sdcks)")
+        self.vmm_sdcka  = gtk.CheckButton("Dual Clock Edge, Serialized ART Enable (sdcka)")
+        self.vmm_sdck6b = gtk.CheckButton("Dual Clock Edge, Serialized 6-bit Enable (sdck6b)")
+        self.vmm_sdrv   = gtk.CheckButton("Tristates Analog Outputs (sdrv)")
+        self.vmm_stpp   = gtk.CheckButton("Timing Outputs Control 2 (stpp)")
+        
+        # connect them to functions
+        self.vmm_spg.connect(   "toggled", self.vmm_callback_bit, registers.SPG)
+        self.vmm_sdp.connect(   "toggled", self.vmm_callback_bit, registers.SDP)
+        self.vmm_sbmx.connect(  "toggled", self.vmm_callback_bit, registers.SBMX)
+        self.vmm_sbft.connect(  "toggled", self.vmm_callback_bit, registers.SBFT)
+        self.vmm_sbfp.connect(  "toggled", self.vmm_callback_bit, registers.SBFP)
+        self.vmm_sbfm.connect(  "toggled", self.vmm_callback_bit, registers.SBFM)
+        self.vmm_slg.connect(   "toggled", self.vmm_callback_bit, registers.SLG)
+        self.vmm_scmx.connect(  "toggled", self.vmm_callback_bit, registers.SCMX)
+        self.vmm_sfa.connect(   "toggled", self.vmm_callback_bit, registers.SFA)
+        self.vmm_sfm.connect(   "toggled", self.vmm_callback_bit, registers.SFM)
+        self.vmm_sng.connect(   "toggled", self.vmm_callback_bit, registers.SNG)
+        self.vmm_sttt.connect(  "toggled", self.vmm_callback_bit, registers.STTT)
+        self.vmm_ssh.connect(   "toggled", self.vmm_callback_bit, registers.SSH)
+        self.vmm_s8b.connect(   "toggled", self.vmm_callback_bit, registers.S8b)
+        self.vmm_s6b.connect(   "toggled", self.vmm_callback_bit, registers.S6b)
+        self.vmm_spdc.connect(  "toggled", self.vmm_callback_bit, registers.SPDC)
+        self.vmm_sdcks.connect( "toggled", self.vmm_callback_bit, registers.SDCKS)
+        self.vmm_sdcka.connect( "toggled", self.vmm_callback_bit, registers.SDCKA)
+        self.vmm_sdck6b.connect("toggled", self.vmm_callback_bit, registers.SDCK6b)
+        self.vmm_sdrv.connect(  "toggled", self.vmm_callback_bit, registers.SDRV)
+        self.vmm_stpp.connect(  "toggled", self.vmm_callback_bit, registers.STPP)
+
+        # create menus
+        self.vmm_sm      = gtk.HBox()
+        self.vmm_sm_menu = gtk.combo_box_new_text()
+        self.vmm_sm_menu.append_text("CHN 1")
+        self.vmm_sm_menu.append_text("CHN 2 | pulser DAC")
+        self.vmm_sm_menu.append_text("CHN 3 | threshold DAC")
+        self.vmm_sm_menu.append_text("CHN 4 | band-gap ref")
+        self.vmm_sm_menu.append_text("CHN 5 | temp")
+        for i in range(5, 64):
+            self.vmm_sm_menu.append_text("CHN " + str(i+1))
+        self.vmm_sm.pack_start(self.vmm_sm_menu,           expand=False)
+        self.vmm_sm.pack_start(gtk.Label(" Monitor (sm)"), expand=False)
+
+        self.vmm_sfam      = gtk.HBox()
+        self.vmm_sfam_menu = gtk.combo_box_new_text()
+        self.vmm_sfam_menu.append_text("timing-at-threshold")
+        self.vmm_sfam_menu.append_text("timing-at-peak")
+        self.vmm_sfam.pack_start(self.vmm_sfam_menu,                expand=False)
+        self.vmm_sfam.pack_start(gtk.Label(" ART En. Mode (sfam)"), expand=False)
+
+        self.vmm_st      = gtk.HBox()
+        self.vmm_st_menu = gtk.combo_box_new_text()
+        self.vmm_st_menu.append_text("200 ns")
+        self.vmm_st_menu.append_text("100 ns")
+        self.vmm_st_menu.append_text(" 50 ns")
+        self.vmm_st_menu.append_text(" 25 ns")
+        self.vmm_st.pack_start(self.vmm_st_menu,                expand=False)
+        self.vmm_st.pack_start(gtk.Label(" Peaking Time (st)"), expand=False)
+
+        self.vmm_sg      = gtk.HBox()
+        self.vmm_sg_menu = gtk.combo_box_new_text()
+        for text in ["0.5 (000)", "1.0 (001)", "3.0 (010)" , "4.5 (011)", 
+                     "6.0 (100)", "9.0 (101)", "12.0 (110)", "16.0 (111)"]:
+            self.vmm_sg_menu.append_text(text)
+        self.vmm_sg.pack_start(self.vmm_sg_menu,               expand=False)
+        self.vmm_sg.pack_start(gtk.Label(" Gain, mV/fC (sg)"), expand=False)
+
+        self.vmm_stot      = gtk.HBox()
+        self.vmm_stot_menu = gtk.combo_box_new_text()
+        self.vmm_stot_menu.append_text("threshold-to-peak")
+        self.vmm_stot_menu.append_text("time-over-threshold")
+        self.vmm_stot.pack_start(self.vmm_stot_menu,                       expand=False)
+        self.vmm_stot.pack_start(gtk.Label(" Timing Outputs Mode (stot)"), expand=False)
+
+        self.vmm_stc      = gtk.HBox()
+        self.vmm_stc_menu = gtk.combo_box_new_text()
+        for text in ["125 ns (00)", "250 ns (01)", "500 ns (10)", "1000 ns (11)"]:
+            self.vmm_stc_menu.append_text(text)
+        self.vmm_stc.pack_start(self.vmm_stc_menu,             expand=False)
+        self.vmm_stc.pack_start(gtk.Label(" TAC Slope (stc)"), expand=False)
+
+        self.vmm_sc10b      = gtk.HBox()
+        self.vmm_sc10b_menu = gtk.combo_box_new_text()
+        for text in ["0 ns (00)", "1 ns (01)", "2 ns (10)", "3 ns (11)"]:
+            self.vmm_sc10b_menu.append_text(text)
+        self.vmm_sc10b.pack_start(self.vmm_sc10b_menu,                          expand=False)
+        self.vmm_sc10b.pack_start(gtk.Label(" 10-bit Conversion Time (sc10b)"), expand=False)
+
+        self.vmm_sc8b      = gtk.HBox()
+        self.vmm_sc8b_menu = gtk.combo_box_new_text()
+        for text in ["0 ns (00)", "1 ns (01)", "2 ns (10)", "3 ns (11)"]:
+            self.vmm_sc8b_menu.append_text(text)
+        self.vmm_sc8b.pack_start(self.vmm_sc8b_menu,                          expand=False)
+        self.vmm_sc8b.pack_start(gtk.Label("  8-bit Conversion Time (sc8b)"), expand=False)
+
+        self.vmm_sc6b      = gtk.HBox()
+        self.vmm_sc6b_menu = gtk.combo_box_new_text()
+        for text in ["0 ns (000)", "1 ns (001)", "2 ns (010)", "3 ns (011)",
+                     "4 ns (100)", "5 ns (101)", "6 ns (110)", "7 ns (111)",
+                     ]:
+            self.vmm_sc6b_menu.append_text(text)
+        self.vmm_sc6b.pack_start(self.vmm_sc6b_menu,                          expand=False)
+        self.vmm_sc6b.pack_start(gtk.Label("  6-bit Conversion Time (sc6b)"), expand=False)
+
+        self.vmm_sdt      = gtk.HBox()
+        self.vmm_sdt_menu = gtk.combo_box_new_text()
+        for text in xrange(1024):
+            self.vmm_sdt_menu.append_text(str(text))
+        self.vmm_sdt.pack_start(self.vmm_sdt_menu,                            expand=False)
+        self.vmm_sdt.pack_start(gtk.Label(" Threshold DAC (max 1023) (sdt)"), expand=False)
+
+        self.vmm_sdp2      = gtk.HBox()
+        self.vmm_sdp2_menu = gtk.combo_box_new_text()
+        for text in xrange(1024):
+            self.vmm_sdp2_menu.append_text(str(text))
+        self.vmm_sdp2.pack_start(self.vmm_sdp2_menu,                             expand=False)
+        self.vmm_sdp2.pack_start(gtk.Label(" Test pulse DAC (max 1023) (sdp2)"), expand=False)
+
+        # connect them to functions
+        self.vmm_sfam_menu.connect( "changed", self.vmm_callback_bit,  registers.SFAM)
+        self.vmm_stot_menu.connect( "changed", self.vmm_callback_bit,  registers.STOT)
+        self.vmm_sm_menu.connect(   "changed", self.vmm_callback_word, registers.SM,    registers.bits_SM)
+        self.vmm_st_menu.connect(   "changed", self.vmm_callback_word, registers.ST,    registers.bits_ST)
+        self.vmm_sg_menu.connect(   "changed", self.vmm_callback_word, registers.SG,    registers.bits_SG)
+        self.vmm_stc_menu.connect(  "changed", self.vmm_callback_word, registers.STC,   registers.bits_STC)
+        self.vmm_sdt_menu.connect(  "changed", self.vmm_callback_word, registers.SDT,   registers.bits_SDT)
+        self.vmm_sdp2_menu.connect( "changed", self.vmm_callback_word, registers.SDP2,  registers.bits_SDP2)
+
+        reverse = True
+        self.vmm_sc10b_menu.connect("changed", self.vmm_callback_word, registers.SC10b, registers.bits_SC10b, reverse)
+        self.vmm_sc8b_menu.connect( "changed", self.vmm_callback_word, registers.SC8b,  registers.bits_SC8b,  reverse)
+        self.vmm_sc6b_menu.connect( "changed", self.vmm_callback_word, registers.SC6b,  registers.bits_SC6b,  reverse)
+
+        # defaults for all VMMs
+        self.vmm_number_combo.set_active(nvmms)
+        self.vmm_sm_menu.set_active(8)
+        self.vmm_sg_menu.set_active(5)
+        self.vmm_stc_menu.set_active(2)
+        self.vmm_sdt_menu.set_active(220)
+        self.vmm_sdp2_menu.set_active(120)
+        for obj in [self.vmm_sbft, self.vmm_sbfp, self.vmm_sbfm, self.vmm_scmx, self.vmm_sfa,
+                    self.vmm_sfm,  self.vmm_s8b,  self.vmm_spdc,
+                    ]:
+            obj.set_active(1)
+        for obj in [self.vmm_sfam_menu,  self.vmm_st_menu,   self.vmm_stot_menu,
+                    self.vmm_sc10b_menu, self.vmm_sc8b_menu, self.vmm_sc6b_menu,
+                    ]:
+            obj.set_active(0)
+
+        # place the buttons and menus
+        self.vmm_variables = gtk.VBox()
+        self.vmm_variables.set_border_width(5)
+        for obj in [self.vmm_header, self.vmm_number, self.vmm_spg,  self.vmm_sdp,  self.vmm_sbmx,
+                    self.vmm_sbft,   self.vmm_sbfp,   self.vmm_sbfm, self.vmm_slg,  self.vmm_scmx, self.vmm_sm,
+                    self.vmm_sfa,    self.vmm_sfam,   self.vmm_st,   self.vmm_sfm,  self.vmm_sg,   self.vmm_sng,
+                    self.vmm_sttt,   self.vmm_stot,   self.vmm_ssh,  self.vmm_stc,  self.vmm_s8b,  self.vmm_s6b,
+                    self.vmm_sc10b,  self.vmm_sc8b,   self.vmm_sc6b, self.vmm_spdc, self.vmm_sdcks, self.vmm_sdcka,
+                    self.vmm_sdck6b, self.vmm_sdrv,   self.vmm_stpp, self.vmm_sdt,  self.vmm_sdp2,
+                    ]:
+            self.vmm_variables.pack_start(obj, expand=False)
+        
+        self.vmm_frame = gtk.Frame()
+        self.vmm_frame.set_border_width(4)
+        self.vmm_frame.set_shadow_type(gtk.SHADOW_IN)
+        self.vmm_frame.add(self.vmm_variables)
+        self.vmm_variables_frame = gtk.HBox()
+        self.vmm_variables_frame.pack_start(self.vmm_frame)
+
+        self.page1_box.pack_start(self.vmm_variables_frame, expand=True)
+        # --------------------------------------------------------------------------------
+
+        self.channel_header = gtk.Label("")
+        self.channel_header.set_markup('<span color="purple" size="18000"><b>Channel Configuration</b></span>')
+
+        self.channel_variables = gtk.VBox()
+        self.channel_variables.set_border_width(5)
+
+        self.channel_label = gtk.Label("  SP SC SL ST SM SD       SMX         SZ10b         SZ8b         SZ6b     ")
+        self.channel_box   = []
+        self.channel_num   = []
+        self.channel_SP    = []
+        self.channel_SC    = []
+        self.channel_SL    = []
+        self.channel_ST    = []
+        self.channel_SM    = []
+        self.channel_SMX   = []
+        self.channel_SD    = []
+        self.channel_SZ10b = []
+        self.channel_SZ8b  = []
+        self.channel_SZ6b  = []
+
+        for channel in xrange(nchannels+1):
+
+            quickset = (channel == nchannels)
+
+            self.channel_box.append(gtk.HBox())
+            self.channel_num.append(gtk.Label("%02i" % (channel)))
+            if quickset:
+                self.channel_num[-1].set_text(" *  ")
+
+            # create buttons
+            self.channel_SP.append( gtk.ToggleButton(label="n"))
+            self.channel_SC.append( gtk.CheckButton())
+            self.channel_SL.append( gtk.CheckButton())
+            self.channel_ST.append( gtk.CheckButton())
+            self.channel_SM.append( gtk.CheckButton())
+            self.channel_SMX.append(gtk.CheckButton())
+
+            # create menus
+            self.channel_SD.append(   gtk.combo_box_new_text())
+            self.channel_SZ10b.append(gtk.combo_box_new_text())
+            self.channel_SZ8b.append( gtk.combo_box_new_text())
+            self.channel_SZ6b.append( gtk.combo_box_new_text())
+            for i in range(16):
+                self.channel_SD[-1].append_text(str(i) + " mv")
+            for i in range(32):
+                self.channel_SZ10b[-1].append_text(str(i) + " ns")
+            for i in range(16):
+                self.channel_SZ8b[-1].append_text(str(i) + " ns")
+            for i in range(8):
+                self.channel_SZ6b[-1].append_text(str(i) + " ns")
+            
+            if quickset:
+                self.channel_SP[-1] = gtk.ToggleButton(label="  ")
+                self.channel_SP[-1].set_inconsistent(True)
+                for obj in [self.channel_SC,
+                            self.channel_SL,
+                            self.channel_ST,
+                            self.channel_SM,
+                            self.channel_SMX,
+                            ]:
+                    obj[-1].set_inconsistent(True)
+
+            # connect to functions
+            ch = "all" if quickset else channel
+            self.channel_SP[-1].connect(   "clicked", self.channel_callback_bit,  ch, index.SP)
+            self.channel_SC[-1].connect(   "clicked", self.channel_callback_bit,  ch, index.SC)
+            self.channel_SL[-1].connect(   "clicked", self.channel_callback_bit,  ch, index.SL)
+            self.channel_ST[-1].connect(   "clicked", self.channel_callback_bit,  ch, index.ST)
+            self.channel_SM[-1].connect(   "clicked", self.channel_callback_bit,  ch, index.SM)
+            self.channel_SMX[-1].connect(  "clicked", self.channel_callback_bit,  ch, index.SMX)
+            self.channel_SD[-1].connect(   "changed", self.channel_callback_word, ch, index.SD,    index.bits_SD)
+            self.channel_SZ10b[-1].connect("changed", self.channel_callback_word, ch, index.SZ10b, index.bits_SZ10b)
+            self.channel_SZ8b[-1].connect( "changed", self.channel_callback_word, ch, index.SZ8b,  index.bits_SZ8b)
+            self.channel_SZ6b[-1].connect( "changed", self.channel_callback_word, ch, index.SZ6b,  index.bits_SZ6b)
+
+            # defaults
+            if not quickset:
+                for obj in [self.channel_SD[-1], self.channel_SZ10b[-1], self.channel_SZ8b[-1], self.channel_SZ6b[-1]]:
+                    obj.set_active(0)
+
+            # build the row
+            for obj in [self.channel_num[-1],
+                        self.channel_SP[-1],
+                        self.channel_SC[-1],
+                        self.channel_SL[-1],
+                        self.channel_ST[-1],
+                        self.channel_SM[-1],
+                        self.channel_SMX[-1],
+                        self.channel_SD[-1],
+                        self.channel_SZ10b[-1],
+                        self.channel_SZ8b[-1],
+                        self.channel_SZ6b[-1],
+                        ]:
+                self.channel_box[-1].pack_start(obj, expand=False)
+
+        # build the window
+        self.channel_variables.pack_start(self.channel_header, expand=False)
+        for obj in [self.vspace(), self.channel_label, 
+                    self.vspace(), self.channel_box[nchannels], 
+                    self.vspace()]:
+            self.channel_variables.pack_start(obj)
+        for channel in xrange(nchannels):
+            self.channel_variables.pack_start(self.channel_box[channel])
+        
+        self.channel_frame = gtk.Frame()
+        self.channel_frame.set_border_width(4)
+        self.channel_frame.set_shadow_type(gtk.SHADOW_IN)
+        self.channel_frame.add(self.channel_variables)
+        self.channel_variables_frame = gtk.HBox()
+        self.channel_variables_frame.pack_start(self.channel_frame)
+
+        self.page1_box.pack_start(self.channel_variables_frame, expand=True)
+
+        # --------------------------------------------------------------------------------
 
         self.page1_scrolledWindow = gtk.ScrolledWindow()
         self.page1_viewport = gtk.Viewport()
         self.page1_viewport.add(self.page1_box)
         self.page1_scrolledWindow.add(self.page1_viewport)
-        self.page2_scrolledWindow = gtk.ScrolledWindow()
-        self.page2_viewport = gtk.Viewport()
-        self.page2_viewport.add(self.page2_box)
-        self.page2_scrolledWindow.add(self.page2_viewport)
-        
-        self.page3_scrolledWindow = gtk.ScrolledWindow()
-        self.page3_viewport = gtk.Viewport()
-        self.page3_viewport.add(self.page3_box)
-        self.page3_scrolledWindow.add(self.page3_viewport)
-        self.page4_scrolledWindow = gtk.ScrolledWindow()
-        self.page4_viewport = gtk.Viewport()
-        self.page4_viewport.add(self.page4_box)
-        self.page4_scrolledWindow.add(self.page4_viewport)
-        self.page5_scrolledWindow = gtk.ScrolledWindow()
-        self.page5_viewport = gtk.Viewport()
-        self.page5_viewport.add(self.page5_box)
-        self.page5_scrolledWindow.add(self.page5_viewport)
-        self.page6_scrolledWindow = gtk.ScrolledWindow()
-        self.page6_viewport = gtk.Viewport()
-        self.page6_viewport.add(self.page6_box)
-        self.page6_scrolledWindow.add(self.page6_viewport)
-        self.page7_scrolledWindow = gtk.ScrolledWindow()
-        self.page7_viewport = gtk.Viewport()
-        self.page7_viewport.add(self.page7_box)
-        self.page7_scrolledWindow.add(self.page7_viewport)
-        self.page8_scrolledWindow = gtk.ScrolledWindow()
-        self.page8_viewport = gtk.Viewport()
-        self.page8_viewport.add(self.page8_box)
-        self.page8_scrolledWindow.add(self.page8_viewport)
-        
+
         self.notebook.append_page(self.page1_scrolledWindow,  self.tab_label_1)
-        #self.notebook.append_page(self.page2_scrolledWindow,  self.tab_label_2)
-        #self.notebook.append_page(self.page3_scrolledWindow,  self.tab_label_3)
-        #self.notebook.append_page(self.page4_scrolledWindow,  self.tab_label_4)
-        #self.notebook.append_page(self.page5_scrolledWindow,  self.tab_label_5)
-        #self.notebook.append_page(self.page6_scrolledWindow,  self.tab_label_6)
-        #self.notebook.append_page(self.page7_scrolledWindow,  self.tab_label_7)
-        #self.notebook.append_page(self.page8_scrolledWindow,  self.tab_label_8)
         self.notebook.append_page(self.userRegs.userRegs_box, self.tab_label_9)
 
         self.box_GUI = gtk.HBox(homogeneous=0, spacing=0)
@@ -829,11 +1074,146 @@ class MMFE8:
         self.window.connect("destroy", self.destroy)
 
 
+    def set_current_vmm(self, widget):
+        active = widget.get_active()
+        self.current_vmm = active if active != nvmms else "all"
+        print "Set current VMM # = %s" % (self.current_vmm if not self.current_vmm == nvmms else "all")
+        if self.current_vmm == "all":
+            return
+        else:
+            self.refresh_vmm_options()
+            self.refresh_channel_options()
+
+    def refresh_vmm_options(self):
+        try:
+            vmm = self.VMM[self.current_vmm]
+        except:
+            sys.exit("ERROR: Attempted to refresh all VMMs. This is not possible")
+
+        self.vmm_spg.set_active(      vmm.globalreg[registers.SPG])
+        self.vmm_sdp.set_active(      vmm.globalreg[registers.SDP])
+        self.vmm_sbmx.set_active(     vmm.globalreg[registers.SBMX])
+        self.vmm_sbft.set_active(     vmm.globalreg[registers.SBFT])
+        self.vmm_sbfp.set_active(     vmm.globalreg[registers.SBFP])
+        self.vmm_sbfm.set_active(     vmm.globalreg[registers.SBFM])
+        self.vmm_slg.set_active(      vmm.globalreg[registers.SLG])
+        self.vmm_scmx.set_active(     vmm.globalreg[registers.SCMX])
+        self.vmm_sfm.set_active(      vmm.globalreg[registers.SFM])
+        self.vmm_sng.set_active(      vmm.globalreg[registers.SNG])
+        self.vmm_sttt.set_active(     vmm.globalreg[registers.STTT])
+        self.vmm_ssh.set_active(      vmm.globalreg[registers.SSH])
+        self.vmm_s8b.set_active(      vmm.globalreg[registers.S8b])
+        self.vmm_s6b.set_active(      vmm.globalreg[registers.S6b])
+        self.vmm_spdc.set_active(     vmm.globalreg[registers.SPDC])
+        self.vmm_sdcks.set_active(    vmm.globalreg[registers.SDCKS])
+        self.vmm_sdcks.set_active(    vmm.globalreg[registers.SDCKA])
+        self.vmm_sdck6b.set_active(   vmm.globalreg[registers.SDCK6b])
+        self.vmm_sdrv.set_active(     vmm.globalreg[registers.SDRV])
+        self.vmm_stpp.set_active(     vmm.globalreg[registers.STPP])
+
+        self.vmm_sfam_menu.set_active(vmm.globalreg[registers.SFAM])
+        self.vmm_stot_menu.set_active(vmm.globalreg[registers.STOT])
+
+        self.vmm_sm_menu.set_active(   self.convert_to_int(vmm.globalreg[registers.SM    : registers.SM    + registers.bits_SM]))
+        self.vmm_st_menu.set_active(   self.convert_to_int(vmm.globalreg[registers.ST    : registers.ST    + registers.bits_ST]))
+        self.vmm_sg_menu.set_active(   self.convert_to_int(vmm.globalreg[registers.SG    : registers.SG    + registers.bits_SG]))
+        self.vmm_stc_menu.set_active(  self.convert_to_int(vmm.globalreg[registers.STC   : registers.STC   + registers.bits_STC]))
+        self.vmm_sc10b_menu.set_active(self.convert_to_int(vmm.globalreg[registers.SC10b : registers.SC10b + registers.bits_SC10b]))
+        self.vmm_sc8b_menu.set_active( self.convert_to_int(vmm.globalreg[registers.SC8b  : registers.SC8b  + registers.bits_SC8b]))
+        self.vmm_sc6b_menu.set_active( self.convert_to_int(vmm.globalreg[registers.SC6b  : registers.SC6b  + registers.bits_SC6b]))
+        self.vmm_sdt_menu.set_active(  self.convert_to_int(vmm.globalreg[registers.SDT   : registers.SDT   + registers.bits_SDT]))
+        self.vmm_sdp2_menu.set_active( self.convert_to_int(vmm.globalreg[registers.SDP2  : registers.SDP2  + registers.bits_SDP2]))
+
+    def vmm_callback_bit(self, widget, register):
+        vmms = self.VMM if self.current_vmm == "all" else [ self.VMM[self.current_vmm] ]
+
+        for vmm in vmms:
+            vmm.globalreg[register] = 1 if widget.get_active() else 0
+
+    def vmm_callback_word(self, widget, register, nbits, reverse=False, debug=False):
+        padding = "0%ib" % nbits
+        word    = format(int(widget.get_active()), padding)
+        vmms    = self.VMM if self.current_vmm == "all" else [ self.VMM[self.current_vmm] ]
+        if reverse:
+            word = word[::-1]
+        if debug:
+            print "Writing %s to register %s with %s bits | VMM_%s" % (word, register, nbits, self.current_vmm)
+
+        # insert word starting at register
+        for vmm in vmms:
+            vmm.globalreg[register:register+nbits] = list(word)
+
+    def channel_callback_bit(self, widget, ch, register):
+        vmms = self.VMM if self.current_vmm == "all" else [ self.VMM[self.current_vmm] ]
+
+        for vmm in vmms:
+            channels = vmm.chan_list if ch == "all" else [ vmm.chan_list[ch] ]
+            for channel in channels:
+                channel.chan_val[register] = 1 if widget.get_active() else 0
+
+                if widget in self.channel_SP[:-1]:
+                    widget.set_label("p" if widget.get_active() else "n")
+
+            if ch == "all" and self.current_vmm != "all":
+                self.refresh_channel_options()
+
+    def channel_callback_word(self, widget, ch, register, nbits):
+        if widget.get_active() < 0:
+            return
+
+        padding = "0%ib" % nbits
+        word    = format(int(widget.get_active()), padding)
+        vmms    = self.VMM if self.current_vmm == "all" else [ self.VMM[self.current_vmm] ]
+
+        # insert word starting at register
+        for vmm in vmms:
+            channels = vmm.chan_list if ch == "all" else [ vmm.chan_list[ch] ]
+            for channel in channels:
+                channel.chan_val[register:register+nbits] = list(word)
+
+            if ch == "all" and self.current_vmm != "all":
+                self.refresh_channel_options()
+
+    def refresh_channel_options(self):
+
+        # quick set
+        for obj in [self.channel_SD[nchannels],
+                    self.channel_SZ10b[nchannels],
+                    self.channel_SZ8b[nchannels],
+                    self.channel_SZ6b[nchannels],
+                    ]:
+            obj.set_active(-1)
+
+        try:
+            vmm = self.VMM[self.current_vmm]
+        except:
+            sys.exit("ERROR: Attempted to refresh all VMMs. This is not possible")
+
+        for ch in xrange(nchannels):
+
+            channel = vmm.chan_list[ch]
+
+            self.channel_SP[ch].set_active( channel.chan_val[index.SP])
+            self.channel_SC[ch].set_active( channel.chan_val[index.SC])
+            self.channel_SL[ch].set_active( channel.chan_val[index.SL])
+            self.channel_ST[ch].set_active( channel.chan_val[index.ST])
+            self.channel_SM[ch].set_active( channel.chan_val[index.SM])
+            self.channel_SMX[ch].set_active(channel.chan_val[index.SMX])
+
+            self.channel_SD[ch].set_active(   self.convert_to_int(channel.chan_val[index.SD    : index.SD    + index.bits_SD]))
+            self.channel_SZ10b[ch].set_active(self.convert_to_int(channel.chan_val[index.SZ10b : index.SZ10b + index.bits_SZ10b]))
+            self.channel_SZ8b[ch].set_active( self.convert_to_int(channel.chan_val[index.SZ8b  : index.SZ8b  + index.bits_SZ8b]))
+            self.channel_SZ6b[ch].set_active( self.convert_to_int(channel.chan_val[index.SZ6b  : index.SZ6b  + index.bits_SZ6b]))
+
+
+    def vspace(self):
+        return gtk.Label(" ")
+
     def main(self):
         gtk.main()
 
 
 if __name__ == "__main__":
-    mmfe8 = MMFE8()
-    mmfe8.main()
+    gui = GUI()
+    gui.main()
 
