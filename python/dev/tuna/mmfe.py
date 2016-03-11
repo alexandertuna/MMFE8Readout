@@ -128,7 +128,7 @@ class MMFE:
             attempts -= 1
             message = "r 0x44A10014 1" # word count of data fifo
             data = self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
-            data_list = string.split(data, " ")
+            data_list = data.split(" ")
             fifo_count = int(data_list[2], 16)
             time.sleep(1)
 
