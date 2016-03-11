@@ -5,6 +5,7 @@ from mmfe8_userRegs import userRegs
 from udp            import udp_stuff
 from helpers        import convert_to_32bit
 
+import binstr
 import numpy as np
 
 nvmms = 8
@@ -175,10 +176,13 @@ class MMFE:
                 word1 = word1 >> 4       # 4 bits of zeros?
                 immfe = int(word1 & 255) # do we need to convert this?
 
-                print "%s %s %s %s %s %s %s %s" % (data_list[iword], data_list[iword+1], 
-                                                   addr, str(amp), str(timing), str(bcid_int), str(vmm), str(immfe))
+                to_print = "word0 = %s word1 = %s addr = %s amp = %s time = %s bcid = %s vmm = %s mmfe = %s"
+                print to_print % (data_list[iword], data_list[iword+1],
+                                  str(addr),     str(amp), str(timing), 
+                                  str(bcid_int), str(vmm), str(immfe))
+
                 with open('mmfe8Test.dat', 'a') as myfile:
-                    myfile.write(str(int(addr))+'\t'+ str(int(amp))+'\t'+ str(int(timing))+'\t'+ str(myIntBCid) +'\t'+ str(vmm) +'\n')
+                    myfile.write(str(int(addr))+'\t'+ str(int(amp))+'\t'+ str(int(timing))+'\t'+ str(bcid_int) +'\t'+ str(vmm) +'\n')
 
     def read_xadc(self, widget):
         message = "x"

@@ -35,7 +35,7 @@ class udp_stuff:
             data, server = sock.recvfrom(4096)
 
             if debug:
-                print "Receive %s" % (data)
+                print "Receive %r" % (data)
                 
         except:
             print "ERROR: UDP communication failed.", sys.exc_info()[0]
