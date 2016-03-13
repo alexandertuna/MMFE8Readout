@@ -12,20 +12,8 @@
 import pygtk
 pygtk.require('2.0')
 import gtk
-from array import *
 import numpy as np
-from struct import *
-import gobject 
-from subprocess import call
-from time import sleep
 import sys
-import os
-import string
-import random
-import binstr
-import socket
-import time
-import math
 
 from mmfe8_userRegs import userRegs
 from mmfe           import MMFE
@@ -81,7 +69,7 @@ class GUI:
         for mmfe in self.current_MMFEs():
             mmfe.external_trigger(widget)
 
-    def set_pulses(self, widget, entry):
+    def set_pulses(self, widget):
         try:
             value = int(widget.get_text())
         except ValueError:
@@ -95,7 +83,7 @@ class GUI:
         for mmfe in self.current_MMFEs():
             mmfe.set_pulses(widget)
 
-    def set_acq_reset_count(self, widget, entry):
+    def set_acq_reset_count(self, widget):
         try:
             value = int(widget.get_text(), base=16)
         except ValueError:
@@ -109,7 +97,7 @@ class GUI:
         for mmfe in self.current_MMFEs():
             mmfe.set_acq_reset_count(widget)
 
-    def set_acq_reset_hold(self, widget, entry):
+    def set_acq_reset_hold(self, widget):
         try:
             value = int(widget.get_text(), base=16)
         except ValueError:
@@ -127,6 +115,10 @@ class GUI:
         for mmfe in self.current_MMFEs():
             mmfe.start(widget)
 
+    def start_all(self, widget):
+        for mmfe in self.MMFEs:
+            mmfe.start(widget)
+
     def reset_global(self, widget):
         for mmfe in self.current_MMFEs():
             mmfe.reset_global(widget)
@@ -142,6 +134,11 @@ class GUI:
     def set_IDs(self, widget):
         for mmfe in self.current_MMFEs():
             mmfe.set_IDs(widget)
+
+    def set_ip(self, widget):
+        for mmfe in self.current_MMFEs():
+            mmfe.set_ip(widget)
+            self.entry_mmfeID.set_text(str(mmfe.mmfeID))
 
     def set_board_ip(self, widget, textBox):
         for mmfe in self.current_MMFEs():
@@ -186,60 +183,13 @@ class GUI:
 
         self.notebook = gtk.Notebook()
         self.notebook.set_tab_pos(gtk.POS_TOP)
-        # self.notebook.modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse("#FFFFFF"))
 
         self.tab_label_1 = gtk.Label("MMFE")
-        self.tab_label_9 = gtk.Label("User Defined")
+        self.tab_label_2 = gtk.Label("User Defined")
 
-        self.udp = udp_stuff()
-        self.ipAddr = ["127.0.0.1",
-                       "192.168.0.130",
-                       "192.168.0.101",
-                       "192.168.0.102",
-                       "192.168.0.103",
-                       "192.168.0.104",
-                       "192.168.0.105",
-                       "192.168.0.106",
-                       "192.168.0.107",
-                       "192.168.0.108",
-                       "192.168.0.109",
-                       "192.168.0.110",
-                       "192.168.0.111",
-                       "192.168.0.112",
-                       "192.168.0.167",
-                       ]
-
-        self.mmfeID = 0
-        #self.vmmGlobalReset = np.zeros((32), dtype=int)         #0x44A100EC  #vmm_global_reset          #reset & vmm_gbl_rst_i & vmm_cfg_en_vec( 7 downto 0)
-        #self.vmm_cfg_sel_reg = np.zeros((32), dtype=int)        #0x44A100EC  #vmm_cfg_sel               #vmm_2display_i(16 downto 12) & mmfeID(11 downto 8) & vmm_readout_i(7 downto 0)
-        self.vmm_cfg_sel = np.zeros((32), dtype=int)             #0x44A100EC  #vmm_cfg_sel               #vmm_2display_i(16 downto 12) & mmfeID(11 downto 8) & vmm_readout_i(7 downto 0)
-        self.cktp_period_dutycycle = np.zeros((32), dtype=int)   #0x44A100F0  #cktp_period_dutycycle     #clk_tp_period_cnt(15 downto 0) & clk_tp_dutycycle_cnt(15 downto 0)
-        #self.start_mmfe8 = np.zeros((32), dtype=int)
-        self.readout_runlength = np.zeros((32), dtype=int)               #0x44A100F4  #ReadOut_RunLength         #ext_trigger_in_sel(26)&axi_data_to_use(25)&int_trig(24)&vmm_readout_i(23 downto 16)&pulses(15 downto 0)
-        self.acq_count_runlength = np.zeros((32), dtype=int)     #0x44A10120  #counts_to_acq_reset       #counts_to_acq_reset( 31 downto 0)
-        self.acq_hold_runlength = np.zeros((32), dtype=int)      #0x44A10120  #counts_to_acq_hold        #counts_to_hold_acq_reset( 31 downto 0)
-        self.xadc = np.zeros((32), dtype=int)                    #0x44A100F8  #xadc                      #read
-        self.admux = np.zeros((32), dtype=int)                   #0x44A100F8  #admux                     #write
-        self.control = np.zeros((32), dtype=int)                         #0x44A100FC  #was vmm_global_reset      #reset & vmm_gbl_rst_i & vmm_cfg_en_vec( 7 downto 0)
-        #self.system_init = np.zeros((32), dtype=int)            #0x44A10100  #axi_reg_60( 0)            #original reset
-        #self.userRegs = userRegs()                              #0x44A10104,08,0C,00,14                 #user_reg_1 #user_reg_2 #user_reg_3 #user_reg_4         
-        self.userRegs = userRegs()                               #0x44A10104,08,0C,00,14                 #user_reg_1 #user_reg_2 #user_reg_3 #user_reg_4 #user_reg_5
-        self.ds2411_low = np.zeros((32), dtype=int)              #0x44A10118  #DS411_low                 #Low
-        self.ds2411_high = np.zeros((32), dtype=int)             #0x44A1011C  #DS411_high                #High
-        self.counts_to_acq_reset = np.zeros((32), dtype=int)     #0x44A10120  #counts_to_acq_reset       #0 to FFFF_FFFF #0=Not Used
-        self.counts_to_acq_hold = np.zeros((32), dtype=int)      #0x44A10120  #counts_to_hold_acq_reset       #0 to FFFF_FFFF #0=Not Used
-        self.terminate = 0                    
-        self.UDP_PORT = 50001
-        self.UDP_IP = ""
-        self.chnlReg = np.zeros((51), dtype=int)
-        self.byteint = np.zeros((51), dtype=np.uint32)
-        self.byteword = np.zeros((32), dtype=int)
+        self.userRegs = userRegs()  #0x44A10104,08,0C,00,14
 
         # GUI global buttons
-        self.button_add_mmfe = gtk.Button("Add MMFE")
-        self.button_add_mmfe.set_size_request(-1,-1)
-        self.button_add_mmfe.modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse("#ADD8E6"))
-
         self.button_exit = gtk.Button("EXIT")
         self.button_exit.set_size_request(-1,-1)
         self.button_exit.connect("clicked", self.destroy)
@@ -251,69 +201,57 @@ class GUI:
         self.button_start.connect("clicked", self.start)
         #self.button_start.set_sensitive(False)
 
-        self.label_pulses = gtk.Label("pulses")
-        self.label_pulses.set_markup('<span color="blue"><b>Pulses:</b></span>')
+        self.button_start_all = gtk.Button("Start All MMFE")
+        self.button_start_all.modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse("#CD5C5C"))
+        self.button_start_all.connect("clicked", self.start_all)
+
+        self.label_pulses = gtk.Label()
+        self.label_pulses.set_markup('<span color="red"><b> Pulses [enter] (999 = continuous)</b></span>')
         self.label_pulses.set_justify(gtk.JUSTIFY_LEFT)
         self.entry_pulses = gtk.Entry(max=3)
         self.entry_pulses.set_text("0")
         self.entry_pulses.set_editable(True)
-        self.entry_pulses.connect("focus-out-event", self.set_pulses)
-        self.entry_pulses.connect("activate", self.set_pulses, self.entry_pulses)
+        self.entry_pulses.set_size_request(100, -1)
+        self.entry_pulses.connect("activate", self.set_pulses)
 
-        #self.combo_pulses.connect("changed", self.set_pulses)
-        #self.combo_pulses.set_active(0)
         self.box_pulses = gtk.HBox()
-        self.box_pulses.pack_start(self.label_pulses, expand=True)
         self.box_pulses.pack_start(self.entry_pulses, expand=False)
-
-        self.label_pulses2 = gtk.Label("999 == Continuous")
-        self.label_pulses2.set_markup('<span color="purple"><b>999 == Continuous</b></span>')
-        self.label_pulses2.set_justify(gtk.JUSTIFY_CENTER)
+        self.box_pulses.pack_start(self.label_pulses, expand=False)
 
         self.label_acq_reset_count = gtk.Label("acq_rst_count")
-        self.label_acq_reset_count.set_markup('<span color="blue"><b>acq_reset_count:</b></span>')
+        self.label_acq_reset_count.set_markup('<span color="red"><b> acq_reset_count [enter] (0 = no reset)</b></span>')
         self.label_acq_reset_count.set_justify(gtk.JUSTIFY_LEFT)
         self.entry_acq_reset_count = gtk.Entry(max=8)
         self.entry_acq_reset_count.set_text("0")
         self.entry_acq_reset_count.set_editable(True)
-        self.entry_acq_reset_count.connect("focus-out-event", self.set_acq_reset_count)
-        self.entry_acq_reset_count.connect("activate", self.set_acq_reset_count, self.entry_acq_reset_count)
+        self.entry_acq_reset_count.set_size_request(100, -1)
+        self.entry_acq_reset_count.connect("activate", self.set_acq_reset_count)
 
-        #self.combo_acq_reset_count.connect("changed", self.set_acq_reset_count)
-        #self.combo_acq_reset_count.set_active(0)
         self.box_acq_reset_count = gtk.HBox()
-        self.box_acq_reset_count.pack_start(self.label_acq_reset_count, expand=True)
         self.box_acq_reset_count.pack_start(self.entry_acq_reset_count, expand=False)
+        self.box_acq_reset_count.pack_start(self.label_acq_reset_count, expand=False)
 
-        self.label_acq_reset_count2 = gtk.Label("0 == None")
-        self.label_acq_reset_count2.set_markup('<span color="purple"><b>0 == No Reset</b></span>')
-        self.label_acq_reset_count2.set_justify(gtk.JUSTIFY_CENTER)
-
-        self.counts_to_acq_reset = np.zeros((32), dtype=int)                    #0x44A1010C  #DS411_high                #High
+        #0x44A1010C  #DS411_high                #High
+        self.counts_to_acq_reset = np.zeros((32), dtype=int)
 
         self.label_acq_reset_hold = gtk.Label("acq_rst_hold")
-        self.label_acq_reset_hold.set_markup('<span color="blue"><b>acq_reset_hold:</b></span>')
+        self.label_acq_reset_hold.set_markup('<span color="red"><b> acq_reset_hold [enter] (0 = no reset)</b></span>')
         self.label_acq_reset_hold.set_justify(gtk.JUSTIFY_LEFT)
         self.entry_acq_reset_hold = gtk.Entry(max=8)
         self.entry_acq_reset_hold.set_text("0")
         self.entry_acq_reset_hold.set_editable(True)
-        self.entry_acq_reset_hold.connect("focus-out-event", self.set_acq_reset_hold)
-        self.entry_acq_reset_hold.connect("activate", self.set_acq_reset_hold, self.entry_acq_reset_hold)
+        self.entry_acq_reset_hold.set_size_request(100, -1)
+        self.entry_acq_reset_hold.connect("activate", self.set_acq_reset_hold)
 
-        #self.combo_acq_reset_hold.connect("changed", self.set_acq_reset_hold)
-        #self.combo_acq_reset_hold.set_active(0)
         self.box_acq_reset_hold = gtk.HBox()
-        self.box_acq_reset_hold.pack_start(self.label_acq_reset_hold, expand=True)
         self.box_acq_reset_hold.pack_start(self.entry_acq_reset_hold, expand=False)
+        self.box_acq_reset_hold.pack_start(self.label_acq_reset_hold, expand=False)
 
-        self.label_acq_reset_hold2 = gtk.Label("0 == None")
-        self.label_acq_reset_hold2.set_markup('<span color="purple"><b>0 == No Reset</b></span>')
-        self.label_acq_reset_hold2.set_justify(gtk.JUSTIFY_CENTER)
-
-        self.counts_to_acq_hold = np.zeros((32), dtype=int)                    #0x44A1010C  #DS411_high                #High
+        #0x44A1010C  #DS411_high                #High
+        self.counts_to_acq_hold = np.zeros((32), dtype=int)
 
         self.label_global_config = gtk.Label("Global Configuration")
-        self.label_global_config.set_markup('<span color="blue" size="18000"><b>Global Configuration</b></span>')
+        self.label_global_config.set_markup('<span color="red" size="18000"><b>Global Configuration</b></span>')
         self.box_global_config = gtk.HBox()
         self.box_global_config.pack_start(self.label_global_config, expand=False)
 
@@ -359,15 +297,15 @@ class GUI:
         self.button_write.set_size_request(-1,-1)
         self.button_write.connect("clicked", self.write_vmm_config)
         
-        self.label_internal_trigger =  gtk.Label("Internal Trigger:    ")
-        self.label_internal_trigger.set_markup('<span color="blue"><b>Internal Trigger:    </b></span>')
+        self.label_internal_trigger =  gtk.Label("")
+        self.label_internal_trigger.set_markup('<span color="red"><b> Internal Trigger </b></span>')
         self.button_internal_trigger = gtk.ToggleButton("OFF")
         self.button_internal_trigger.child.set_justify(gtk.JUSTIFY_CENTER)
         self.button_internal_trigger.connect("clicked", self.internal_trigger)
         self.button_internal_trigger.set_size_request(-1,-1)
         
-        self.label_external_trigger =  gtk.Label("External Trigger:    ")
-        self.label_external_trigger.set_markup('<span color="blue"><b>External Trigger:    </b></span>')
+        self.label_external_trigger =  gtk.Label("")
+        self.label_external_trigger.set_markup('<span color="red"><b> External Trigger </b></span>')
         self.button_external_trigger = gtk.ToggleButton("OFF")
         self.button_external_trigger.child.set_justify(gtk.JUSTIFY_CENTER)
         self.button_external_trigger.connect("clicked", self.external_trigger)
@@ -378,8 +316,8 @@ class GUI:
         self.button_ext_trig_pulse.connect("clicked", self.send_external_trig)
         self.button_ext_trig_pulse.set_size_request(-1,-1)
         
-        self.label_leaky_readout =  gtk.Label("Leaky Readout Data:    ")
-        self.label_leaky_readout.set_markup('<span color="blue"><b>Leaky Readout:    </b></span>')
+        self.label_leaky_readout =  gtk.Label("")
+        self.label_leaky_readout.set_markup('<span color="red"><b> Leaky Readout </b></span>')
         self.button_leaky_readout = gtk.ToggleButton("OFF")
         self.button_leaky_readout.child.set_justify(gtk.JUSTIFY_CENTER)
         self.button_leaky_readout.connect("clicked", self.leaky_readout)
@@ -395,13 +333,6 @@ class GUI:
         self.button_print_config.set_size_request(-1,-1)
         self.button_print_config.connect("clicked", self.print_vmm_config)
 
-        self.label_mmfe8_id = gtk.Label("mmfe8")
-        self.label_mmfe8_id.set_markup('<span color="red"><b>mmfe\nID</b></span>')
-        self.label_mmfe8_id.set_justify(gtk.JUSTIFY_CENTER)
-        self.entry_mmfeID = gtk.Entry(max=3)
-        self.entry_mmfeID.set_text(str(self.mmfeID))
-        self.entry_mmfeID.set_editable(False)
-        
         self.label_mmfe_global = gtk.Label("")
         self.label_mmfe_global.set_markup('<span color="red" size="18000"><b>MMFE Configuration</b></span>')
         self.label_mmfe_global.set_justify(gtk.JUSTIFY_CENTER)
@@ -415,20 +346,21 @@ class GUI:
         for immfe in xrange(nmmfes):
             self.combo_mmfe_number.append_text(str(immfe))
         self.combo_mmfe_number.connect("changed", self.set_current_mmfe)
-        # self.combo_mmfe_number.set_active(0)
         self.box_mmfe_number = gtk.HBox()
         self.box_mmfe_number.pack_start(self.label_mmfe_number, expand=False)
         self.box_mmfe_number.pack_start(self.combo_mmfe_number, expand=False)
 
-        self.label_IP = gtk.Label("IP ADDRESS")
-        self.label_IP.set_markup('<span color="red"><b>IP ADDRESS</b></span>')
-        self.label_IP.set_justify(gtk.JUSTIFY_CENTER)
-        self.combo_IP = gtk.combo_box_new_text()
-        for i in range (len(self.ipAddr)):
-            self.combo_IP.append_text(self.ipAddr[i]) 
+        self.label_ip = gtk.Label("")
+        self.label_ip.set_markup('<span color="red"><b> IP Address [enter]</b></span>')
+        self.label_ip.set_justify(gtk.JUSTIFY_LEFT)
+        self.entry_ip = gtk.Entry()
+        self.entry_ip.set_text("192.168.0.101")
+        self.entry_ip.set_editable(True)
+        self.entry_ip.connect("activate", self.set_ip)
 
-        self.combo_IP.set_active(0)
-        self.combo_IP.connect("changed", self.set_board_ip, self.entry_mmfeID) 
+        self.box_ip = gtk.HBox()
+        self.box_ip.pack_start(self.entry_ip, expand=False)
+        self.box_ip.pack_start(self.label_ip, expand=False)
 
         self.combo_display = gtk.combo_box_new_text()
         for i in range(32):
@@ -440,13 +372,14 @@ class GUI:
         self.button_setIDs.set_size_request(-1,-1)        
         self.button_setIDs.connect("clicked", self.set_IDs)
         
-        self.label_mmfe8_id = gtk.Label("mmfe8")
-        self.label_mmfe8_id.set_markup('<span color="red"><b>mmfe8 ID</b></span>')
-        self.label_mmfe8_id.set_justify(gtk.JUSTIFY_CENTER)
-        self.label_Space20 = gtk.Label("   ")
+        self.label_mmfeID = gtk.Label("")
+        self.label_mmfeID.set_markup('<span color="red"><b> MMFE ID</b></span>')
+        self.label_mmfeID.set_justify(gtk.JUSTIFY_CENTER)
+        self.entry_mmfeID = gtk.Entry(max=3)
+        self.entry_mmfeID.set_text(str("0"))
         self.box_mmfeID = gtk.HBox()
-        self.box_mmfeID.pack_start(self.label_mmfe8_id,expand=True)
-        self.box_mmfeID.pack_start(self.entry_mmfeID,expand=False)
+        self.box_mmfeID.pack_start(self.entry_mmfeID, expand=False)
+        self.box_mmfeID.pack_start(self.label_mmfeID, expand=False)
 
         self.label_display_id = gtk.Label("vmm2")
         self.label_display_id.set_markup('<span color="red"><b>Scope  </b></span>')
@@ -454,7 +387,6 @@ class GUI:
 
         self.label_Space21 = gtk.Label("    ")
         self.box_labelID = gtk.HBox()
-        self.box_labelID.pack_start(self.label_Space20,expand=True) #
 
         self.box_ResetID = gtk.VBox()
         self.box_ResetID.pack_start(self.label_vmmGlobal_Reset,expand=False)
@@ -473,16 +405,16 @@ class GUI:
         self.box_vmmID.pack_start(self.combo_display,expand=False)
 
         self.box_internal_trigger = gtk.HBox()
-        self.box_internal_trigger.pack_start(self.label_internal_trigger,expand=False) #
-        self.box_internal_trigger.pack_start(self.button_internal_trigger,expand=True)
+        self.box_internal_trigger.pack_start(self.label_internal_trigger,  expand=False)
+        self.box_internal_trigger.pack_start(self.button_internal_trigger, expand=True)
 
         self.box_external_trigger = gtk.HBox()
-        self.box_external_trigger.pack_start(self.label_external_trigger,expand=False) #
-        self.box_external_trigger.pack_start(self.button_external_trigger,expand=True)
+        self.box_external_trigger.pack_start(self.label_external_trigger,  expand=False)
+        self.box_external_trigger.pack_start(self.button_external_trigger, expand=True)
 
         self.box_leaky_readout = gtk.HBox()
-        self.box_leaky_readout.pack_start(self.label_leaky_readout,expand=False) #
-        self.box_leaky_readout.pack_start(self.button_leaky_readout,expand=True)
+        self.box_leaky_readout.pack_start(self.label_leaky_readout,  expand=False)
+        self.box_leaky_readout.pack_start(self.button_leaky_readout, expand=True)
 
         #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         #                          FRAME 1   
@@ -501,25 +433,6 @@ class GUI:
         self.box_buttons.set_border_width(5)
         self.box_buttons.set_size_request(-1,-1)
 
-        # self.box_buttons.pack_start(self.box_global_config, expand=False)
-        # self.box_buttons.pack_start(self.button_SystemInit, expand=False)
-        # self.box_buttons.pack_start(self.button_SystemLoad, expand=False)
-        # self.box_buttons.pack_start(self.box_internal_trigger,expand=False)
-        # self.box_buttons.pack_start(self.box_external_trigger,expand=False)
-        # self.box_buttons.pack_start(self.box_leaky_readout,expand=False)
-        # self.box_buttons.pack_start(self.box_pulses,expand=False)        
-        # self.box_buttons.pack_start(self.label_pulses2,expand=False)
-        # self.box_buttons.pack_start(self.box_acq_reset_count,expand=False)        
-        # self.box_buttons.pack_start(self.label_acq_reset_count2,expand=False)
-        # self.box_buttons.pack_start(self.box_acq_reset_hold,expand=False)        
-        # self.box_buttons.pack_start(self.label_acq_reset_hold2,expand=False)
-              
-        # self.box_buttons.pack_start(self.button_start,expand=False)
-        # self.box_buttons.pack_start(self.button_read_XADC,expand=False)
-        # self.box_buttons.pack_start(self.button_ext_trig_pulse,expand=False)
-        # self.box_buttons.pack_start(self.button_exit,expand=False)
-        # self.box_buttons.pack_start(self.button_add_mmfe, expand=False)
-
         self.box_mmfe = gtk.VBox()
         self.box_mmfe.set_spacing(5)
         self.box_mmfe.set_border_width(5)
@@ -527,8 +440,7 @@ class GUI:
 
         self.box_mmfe.pack_start(self.box_mmfe_global, expand=False)
         self.box_mmfe.pack_start(self.box_mmfe_number, expand=False)
-        self.box_mmfe.pack_start(self.label_IP,        expand=False)
-        self.box_mmfe.pack_start(self.combo_IP,        expand=False)
+        self.box_mmfe.pack_start(self.box_ip,          expand=False)
 
         self.box_mmfe.pack_start(self.box_mmfeID,          expand=False)
         self.box_mmfe.pack_start(self.frame_ReadoutMask,   expand=False)
@@ -537,23 +449,22 @@ class GUI:
         self.box_mmfe.pack_start(self.button_write,        expand=False)
         self.box_mmfe.pack_start(self.frame_Reset,         expand=False)  
 
-        self.box_mmfe.pack_start(self.button_SystemInit,      expand=False)
-        self.box_mmfe.pack_start(self.button_SystemLoad,      expand=False)
-        self.box_mmfe.pack_start(self.box_internal_trigger,   expand=False)
-        self.box_mmfe.pack_start(self.box_external_trigger,   expand=False)
-        self.box_mmfe.pack_start(self.box_leaky_readout,      expand=False)
-        self.box_mmfe.pack_start(self.box_pulses,             expand=False)        
-        self.box_mmfe.pack_start(self.label_pulses2,          expand=False)
-        self.box_mmfe.pack_start(self.box_acq_reset_count,    expand=False)        
-        self.box_mmfe.pack_start(self.label_acq_reset_count2, expand=False)
-        self.box_mmfe.pack_start(self.box_acq_reset_hold,     expand=False)        
-        self.box_mmfe.pack_start(self.label_acq_reset_hold2,  expand=False)
-              
+        self.box_mmfe.pack_start(self.button_SystemInit,    expand=False)
+        self.box_mmfe.pack_start(self.button_SystemLoad,    expand=False)
+        self.box_mmfe.pack_start(self.box_internal_trigger, expand=False)
+        self.box_mmfe.pack_start(self.box_external_trigger, expand=False)
+        self.box_mmfe.pack_start(self.box_leaky_readout,    expand=False)
+        self.box_mmfe.pack_start(self.box_pulses,           expand=False)
+        self.box_mmfe.pack_start(self.box_acq_reset_count,  expand=False)
+        self.box_mmfe.pack_start(self.box_acq_reset_hold,   expand=False)
+        self.box_mmfe.pack_start(self.vspace(),             expand=False)
+
         self.box_mmfe.pack_start(self.button_start,          expand=False)
         self.box_mmfe.pack_start(self.button_read_XADC,      expand=False)
         self.box_mmfe.pack_start(self.button_ext_trig_pulse, expand=False)
         self.box_mmfe.pack_start(self.button_exit,           expand=False)
-        self.box_mmfe.pack_start(self.button_add_mmfe,       expand=False)
+        self.box_mmfe.pack_start(self.vspace(),              expand=False)
+        self.box_mmfe.pack_start(self.button_start_all,      expand=False)
 
         self.frame_mmfe = gtk.Frame()
         self.frame_mmfe.set_border_width(4)
@@ -878,6 +789,7 @@ class GUI:
             self.vmm_sm_menu.set_active(8)
             self.vmm_sg_menu.set_active(5)
             self.vmm_stc_menu.set_active(2)
+            self.vmm_sc8b_menu.set_active(3)
             self.vmm_sdt_menu.set_active(220)
             self.vmm_sdp2_menu.set_active(120)
             for obj in [self.vmm_sbft, self.vmm_sbfp, self.vmm_sbfm, self.vmm_scmx, self.vmm_sfa,
@@ -885,7 +797,7 @@ class GUI:
                         ]:
                 obj.set_active(1)
             for obj in [self.vmm_sfam_menu,  self.vmm_st_menu,   self.vmm_stot_menu,
-                        self.vmm_sc10b_menu, self.vmm_sc8b_menu, self.vmm_sc6b_menu,
+                        self.vmm_sc10b_menu, self.vmm_sc6b_menu,
                         ]:
                 obj.set_active(0)
 
@@ -896,7 +808,9 @@ class GUI:
                             self.channel_SZ6b[ch],
                             ]:
                     obj.set_active(0)
-
+                for obj in [self.channel_SM[ch], 
+                            ]:
+                    obj.set_active(1)
 
         self.combo_mmfe_number.set_active(0)
         self.vmm_number_combo.set_active(0)
@@ -913,7 +827,7 @@ class GUI:
         self.page1_scrolledWindow.add(self.page1_viewport)
 
         self.notebook.append_page(self.page1_scrolledWindow,  self.tab_label_1)
-        self.notebook.append_page(self.userRegs.userRegs_box, self.tab_label_9)
+        self.notebook.append_page(self.userRegs.userRegs_box, self.tab_label_2)
 
         self.box_GUI = gtk.HBox(homogeneous=0, spacing=0)
         self.box_GUI.pack_start(self.box_buttons, expand=False)
@@ -929,7 +843,7 @@ class GUI:
         if self.current_mmfe == "all":
             return
         else:
-            # self.refresh_mmfe_options()
+            self.refresh_mmfe_options()
             if self.current_vmm == "all":
                 return
             else:
@@ -961,6 +875,20 @@ class GUI:
             return mmfe.VMM
         else:
             return [ mmfe.VMM[self.current_vmm] ]
+
+    def refresh_mmfe_options(self):
+
+        mmfe = self.MMFEs[self.current_mmfe] if self.current_mmfe != "all" else sys.exit("Error: Cannot refresh all MMFEs.")
+
+        self.entry_ip.set_text(str(mmfe.UDP_IP))
+        self.entry_pulses.set_text(str(mmfe.pulses))
+        self.entry_acq_reset_count.set_text(str(mmfe.acq_reset_count))
+        self.entry_acq_reset_hold.set_text(str(mmfe.acq_reset_hold))
+        self.entry_mmfeID.set_text(str(mmfe.mmfeID))
+
+        for ivmm in xrange(nvmms):
+            self.vmm_readout_buttons[ivmm].set_active(mmfe.readout_runlength[16+ivmm])
+            self.vmm_reset_buttons[  ivmm].set_active(mmfe.vmm_cfg_sel[ivmm])
 
     def refresh_vmm_options(self):
 

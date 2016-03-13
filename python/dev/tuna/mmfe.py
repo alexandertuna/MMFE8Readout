@@ -20,9 +20,9 @@ class MMFE:
         for _ in range(nvmms):
             self.VMM.append(VMM())
 
-        self.udp      = udp_stuff()
-        self.UDP_PORT = 50001
-        self.UDP_IP   = ""
+        self.udp       = udp_stuff()
+        self.UDP_PORT  = 50001
+        self.UDP_IP    = "192.168.0.000"
 
         self.vmm_cfg_sel          = np.zeros((32), dtype=int)
         self.readout_runlength    = np.zeros((32), dtype=int)
@@ -40,6 +40,11 @@ class MMFE:
         self.byteword             = np.zeros((32), dtype=int)
         self.userRegs = userRegs()
 
+        self.pulses          = 0
+        self.acq_reset_count = 0
+        self.acq_reset_hold  = 0
+
+        self.mmfeID = 0
         self.ipAddr = ["127.0.0.1",
                        "192.168.0.130",
                        "192.168.0.101",
@@ -123,19 +128,27 @@ class MMFE:
         print
 
     def daq_readOut(self):
+        data       = None
         fifo_count = 0
-        attempts = 10
+        attempts   = 10
         while fifo_count == 0 and attempts > 0:
             attempts -= 1
             message = "r 0x44A10014 1" # word count of data fifo
             data = self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
-            data_list = data.split(" ")
-            fifo_count = int(data_list[2], 16)
+            if data != None:
+                data_list  = data.split(" ")
+                fifo_count = int(data_list[2], 16)
             time.sleep(1)
 
         print "FIFOCNT ", fifo_count
+        if data == None or fifo_count == 0:
+            print "Warning: Did not receive data. Stop readout."
+            return
+        if fifo_count == 0:
+            print "Warning: found 0 FIFO counts. Stop readout."
+            return
         if fifo_count % 2 != 0:
-            print "Warning! Lost one count in fifo reading."
+            print "Warning: Lost one count in fifo reading."
             fifo_count -= 1
 
         peeks_per_cycle = 10
@@ -216,8 +229,8 @@ class MMFE:
         self.write_readout_runlength()
 
     def set_pulses(self, widget, entry=None):
-        value = int(widget.get_text())
-        word  = '{0:010b}'.format(value)
+        self.pulses = int(widget.get_text())
+        word = '{0:010b}'.format(self.pulses)
         for bit in xrange(len(word)):
             self.readout_runlength[9 - bit] = int(word[bit])
         
@@ -227,12 +240,14 @@ class MMFE:
         value   = int(widget.get_text(), base=16)
         message = "w 0x44A10120 %s" % (value)
         print "Writing %s counts to acq. reset" % (value)
+        self.acq_reset_count = value
         self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
 
-    def set_acq_reset_hold(self, widget, entry):
+    def set_acq_reset_hold(self, widget, entry=None):
         value   = int(widget.get_text(), base=16)
         message = "w 0x44A10124 %s" % (value)
         print "Writing %s counts to acq. hold" % (value)
+        self.acq_reset_hold = value
         self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
 
     def start(self, widget):
@@ -291,6 +306,32 @@ class MMFE:
         self.write_vmm_cfg_sel()
         self.write_readout_runlength()
 
+    def set_ip(self, widget):
+        self.UDP_IP = widget.get_text()
+        self.userRegs.set_udp_ip(self.UDP_IP)
+
+        try:
+            self.mmfeID = self.ipAddr.index(self.UDP_IP)
+        except:
+            print "Warning: Did not find %s in list of valid IP addresses. Set mmfeID=0." % (self.UDP_IP)
+            self.mmfeID = 0
+
+        word = '{0:04b}'.format(self.mmfeID)
+        for bit in xrange(len(word)):
+            self.vmm_cfg_sel[11 - bit] = int(word[bit])
+        print
+        print "Set MMFE8 IP address = %s" % (self.UDP_IP)
+        print "Set MMFE8 ID         = %s" % (self.mmfeID)
+        print "Does MMFE8 ID mean anything?"
+        print
+
+        last_three_digits = self.UDP_IP.split(".")[-1]
+        last_digit        = last_three_digits[-1]
+        last_digit_hex    = hex(int(last_digit))
+        message = "w 0x44A10150 %s" % (last_digit_hex)
+        print "Writing last digit of IP address: %s" % (last_digit_hex)
+        self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
+
     def set_board_ip(self, widget, textBox):
         choice = widget.get_active()
         self.userRegs.set_udp_ip(self.ipAddr[choice])
@@ -324,10 +365,10 @@ class MMFE:
 
     def readout_vmm_callback(self, widget, ivmm):
         self.readout_runlength[16+ivmm] = 1 if widget.get_active() else 0
-        self.load_IDs()
+        # self.load_IDs()
 
     def reset_vmm_callback(self, widget, ivmm):
         self.vmm_cfg_sel[ivmm] = 1 if widget.get_active() else 0
-        self.load_IDs()
+        # self.load_IDs()
 
 
