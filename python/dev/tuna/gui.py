@@ -97,6 +97,13 @@ class GUI:
         for mmfe in self.current_MMFEs():
             mmfe.set_acq_reset_count(widget)
 
+    def set_user_udp(self, widget):
+        message = widget.get_text()
+
+        for mmfe in self.current_MMFEs():
+            mmfe.udp_message = message
+            mmfe.udp.udp_client(mmfe.udp_message, mmfe.UDP_IP, mmfe.UDP_PORT)
+
     def set_acq_reset_hold(self, widget):
         try:
             value = int(widget.get_text(), base=16)
@@ -189,7 +196,6 @@ class GUI:
 
         self.userRegs = userRegs()  #0x44A10104,08,0C,00,14
 
-        # GUI global buttons
         self.button_exit = gtk.Button("EXIT")
         self.button_exit.set_size_request(-1,-1)
         self.button_exit.connect("clicked", self.destroy)
@@ -199,7 +205,6 @@ class GUI:
         self.label_start = self.button_start.get_children()[0]
         self.button_start.set_size_request(-1,-1)
         self.button_start.connect("clicked", self.start)
-        #self.button_start.set_sensitive(False)
 
         self.button_start_all = gtk.Button("Start All MMFE")
         self.button_start_all.modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse("#CD5C5C"))
@@ -209,24 +214,19 @@ class GUI:
         self.label_pulses.set_markup('<span color="red"><b> Pulses [enter] (999 = continuous)</b></span>')
         self.label_pulses.set_justify(gtk.JUSTIFY_LEFT)
         self.entry_pulses = gtk.Entry(max=3)
-        self.entry_pulses.set_text("0")
-        self.entry_pulses.set_editable(True)
-        self.entry_pulses.set_size_request(100, -1)
+        self.entry_pulses.set_size_request(120, -1)
         self.entry_pulses.connect("activate", self.set_pulses)
 
         self.box_pulses = gtk.HBox()
         self.box_pulses.pack_start(self.entry_pulses, expand=False)
         self.box_pulses.pack_start(self.label_pulses, expand=False)
 
-        self.label_acq_reset_count = gtk.Label("acq_rst_count")
+        self.label_acq_reset_count = gtk.Label("")
         self.label_acq_reset_count.set_markup('<span color="red"><b> acq_reset_count [enter] (0 = no reset)</b></span>')
         self.label_acq_reset_count.set_justify(gtk.JUSTIFY_LEFT)
         self.entry_acq_reset_count = gtk.Entry(max=8)
-        self.entry_acq_reset_count.set_text("0")
-        self.entry_acq_reset_count.set_editable(True)
-        self.entry_acq_reset_count.set_size_request(100, -1)
+        self.entry_acq_reset_count.set_size_request(120, -1)
         self.entry_acq_reset_count.connect("activate", self.set_acq_reset_count)
-
         self.box_acq_reset_count = gtk.HBox()
         self.box_acq_reset_count.pack_start(self.entry_acq_reset_count, expand=False)
         self.box_acq_reset_count.pack_start(self.label_acq_reset_count, expand=False)
@@ -234,21 +234,28 @@ class GUI:
         #0x44A1010C  #DS411_high                #High
         self.counts_to_acq_reset = np.zeros((32), dtype=int)
 
-        self.label_acq_reset_hold = gtk.Label("acq_rst_hold")
+        self.label_acq_reset_hold = gtk.Label("")
         self.label_acq_reset_hold.set_markup('<span color="red"><b> acq_reset_hold [enter] (0 = no reset)</b></span>')
         self.label_acq_reset_hold.set_justify(gtk.JUSTIFY_LEFT)
         self.entry_acq_reset_hold = gtk.Entry(max=8)
-        self.entry_acq_reset_hold.set_text("0")
-        self.entry_acq_reset_hold.set_editable(True)
-        self.entry_acq_reset_hold.set_size_request(100, -1)
+        self.entry_acq_reset_hold.set_size_request(120, -1)
         self.entry_acq_reset_hold.connect("activate", self.set_acq_reset_hold)
-
         self.box_acq_reset_hold = gtk.HBox()
         self.box_acq_reset_hold.pack_start(self.entry_acq_reset_hold, expand=False)
         self.box_acq_reset_hold.pack_start(self.label_acq_reset_hold, expand=False)
 
         #0x44A1010C  #DS411_high                #High
         self.counts_to_acq_hold = np.zeros((32), dtype=int)
+
+        self.label_user_udp = gtk.Label("")
+        self.label_user_udp.set_markup('<span color="red"><b> User UDP Message [enter]</b></span>')
+        self.label_user_udp.set_justify(gtk.JUSTIFY_LEFT)
+        self.entry_user_udp = gtk.Entry()
+        self.entry_user_udp.set_size_request(120, -1)
+        self.entry_user_udp.connect("activate", self.set_user_udp)
+        self.box_user_udp = gtk.HBox()
+        self.box_user_udp.pack_start(self.entry_user_udp, expand=False)
+        self.box_user_udp.pack_start(self.label_user_udp, expand=False)
 
         self.label_global_config = gtk.Label("Global Configuration")
         self.label_global_config.set_markup('<span color="red" size="18000"><b>Global Configuration</b></span>')
@@ -457,6 +464,7 @@ class GUI:
         self.box_mmfe.pack_start(self.box_pulses,           expand=False)
         self.box_mmfe.pack_start(self.box_acq_reset_count,  expand=False)
         self.box_mmfe.pack_start(self.box_acq_reset_hold,   expand=False)
+        self.box_mmfe.pack_start(self.box_user_udp,         expand=False)
         self.box_mmfe.pack_start(self.vspace(),             expand=False)
 
         self.box_mmfe.pack_start(self.button_start,          expand=False)
@@ -884,6 +892,7 @@ class GUI:
         self.entry_pulses.set_text(str(mmfe.pulses))
         self.entry_acq_reset_count.set_text(str(mmfe.acq_reset_count))
         self.entry_acq_reset_hold.set_text(str(mmfe.acq_reset_hold))
+        self.entry_user_udp.set_text(mmfe.udp_message)
         self.entry_mmfeID.set_text(str(mmfe.mmfeID))
 
         for ivmm in xrange(nvmms):

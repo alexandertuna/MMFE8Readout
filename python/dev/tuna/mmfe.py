@@ -20,9 +20,10 @@ class MMFE:
         for _ in range(nvmms):
             self.VMM.append(VMM())
 
-        self.udp       = udp_stuff()
-        self.UDP_PORT  = 50001
-        self.UDP_IP    = "192.168.0.000"
+        self.udp         = udp_stuff()
+        self.UDP_PORT    = 50001
+        self.UDP_IP      = "192.168.0.000"
+        self.udp_message = "r 0x44A1xxxx 0x1"
 
         self.vmm_cfg_sel          = np.zeros((32), dtype=int)
         self.readout_runlength    = np.zeros((32), dtype=int)
