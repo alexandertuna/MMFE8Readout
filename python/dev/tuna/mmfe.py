@@ -330,24 +330,6 @@ class MMFE:
         print "Writing last digit of IP address: %s" % (last_digit_hex)
         self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
 
-    def set_board_ip(self, widget, textBox):
-        choice = widget.get_active()
-        self.UDP_IP = self.ipAddr[choice]
-        textBox.set_text(str(choice))
-        self.mmfeID = int(choice)
-        print "MMFE8 IP address = %s and ID = %s" % (self.UDP_IP, self.mmfeID)
-
-        word = '{0:04b}'.format(choice)
-        for bit in xrange(len(word)):
-            self.vmm_cfg_sel[11 - bit] = int(word[bit])
-
-        last_three_digits = self.UDP_IP.split(".")[-1]
-        last_digit        = last_three_digits[-1]
-        last_digit_hex    = hex(int(last_digit))
-        message = "w 0x44A10150 %s" % (last_digit_hex)
-        print "Writing last digit of IP address: %s" % (last_digit_hex)
-        self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
-        
     def set_display(self, widget):
         word = '{0:05b}'.format(widget.get_active())
         for bit in xrange(len(word)):

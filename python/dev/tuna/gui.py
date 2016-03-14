@@ -156,10 +156,6 @@ class GUI:
             mmfe.set_ip(widget)
             self.entry_mmfeID.set_text(str(mmfe.mmfeID))
 
-    def set_board_ip(self, widget, textBox):
-        for mmfe in self.current_MMFEs():
-            mmfe.set_board_ip(widget, textBox)
-
     def set_display(self, widget):
         for mmfe in self.current_MMFEs():
             mmfe.set_display(widget)
