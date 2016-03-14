@@ -29,149 +29,6 @@ class GUI:
     """
     """
 
-    def destroy(self, widget):
-        print
-        print "Goodbye from the MMFE8 GUI!"
-        print
-        gtk.main_quit()
-
-    def write_vmm_config(self, widget):
-        for mmfe in self.current_MMFEs():
-            for vmm in self.current_VMMs(mmfe):
-                mmfe.write_vmm_config(widget, vmm)
-
-    def print_vmm_config(self, widget):
-        for mmfe in self.current_MMFEs():
-            for vmm in self.current_VMMs(mmfe):
-                mmfe.print_vmm_config(widget, vmm)
-
-    def read_xadc(self, widget):
-        for mmfe in self.current_MMFEs():
-            mmfe.read_xadc(widget)
-
-    def send_external_trig(self, widget):
-        for mmfe in self.current_MMFEs():
-            mmfe.send_external_trig(widget)
-
-    def leaky_readout(self, widget):
-        widget.set_label("Leaky Readout [ON]" if widget.get_active() else "Leaky Readout [OFF]")
-        for mmfe in self.current_MMFEs():
-            mmfe.leaky_readout(widget)
-
-    def internal_trigger(self, widget):
-        widget.set_label("Internal Trigger [ON]" if widget.get_active() else "Internal Trigger [OFF]")
-        for mmfe in self.current_MMFEs():
-            mmfe.internal_trigger(widget)
-
-    def external_trigger(self, widget):
-        widget.set_label("External Trigger [ON]" if widget.get_active() else "External Trigger [OFF]")
-        for mmfe in self.current_MMFEs():
-            mmfe.external_trigger(widget)
-
-    def set_pulses(self, widget):
-        try:
-            value = int(widget.get_text())
-        except ValueError:
-            print "ERROR: Pulses value must be a decimal number"
-            return 
-        if value < 0 or value > 999: #0x3E7
-            print "SDP value out of range"
-            print "0 <= Pulses <= 999" 
-            return
-
-        for mmfe in self.current_MMFEs():
-            mmfe.set_pulses(widget)
-
-    def set_acq_reset_count(self, widget):
-        try:
-            value = int(widget.get_text(), base=16)
-        except ValueError:
-            print "acq_count value must be a hex number"
-            return
-        if value < 0 or value > 0xffffffff: #0x3E7
-            print "Acq count value out of range"
-            print "0 <= acq_count <= 0xffffffff" 
-            return
-
-        for mmfe in self.current_MMFEs():
-            mmfe.set_acq_reset_count(widget)
-
-    def send_user_udp(self, widget):
-        """
-        Communicate with the MMFE directly.
-        r for read, w for write, p for poke, k for peek
-        Relevant registers include:
-            axi_reg(61) <=> 0x44A10104
-            axi_reg(62) <=> 0x44A10108
-            axi_reg(63) <=> 0x44A1010C
-            axi_reg(64) <=> 0x44A10110
-            axi_reg(65) <=> 0x44A10114
-        """
-        message = widget.get_text()
-
-        for mmfe in self.current_MMFEs():
-            mmfe.udp_message = message
-            mmfe.udp.udp_client(mmfe.udp_message, mmfe.UDP_IP, mmfe.UDP_PORT, debug=True)
-
-    def set_acq_reset_hold(self, widget):
-        try:
-            value = int(widget.get_text(), base=16)
-        except ValueError:
-            print "acq_hold value must be a hex number"
-            return
-        if value < 0 or value > 0xffffffff: #0x3E7
-            print "Acq hold value out of range"
-            print "0 <= acq_hold <= 0xffffffff" 
-            return
-
-        for mmfe in self.current_MMFEs():
-            mmfe.set_acq_reset_hold(widget)
-
-    def start(self, widget):
-        for mmfe in self.current_MMFEs():
-            mmfe.start(widget)
-
-    def start_all(self, widget):
-        for mmfe in self.MMFEs:
-            mmfe.start(widget)
-
-    def reset_global(self, widget):
-        for mmfe in self.current_MMFEs():
-            mmfe.reset_global(widget)
-
-    def system_init(self, widget):
-        for mmfe in self.current_MMFEs():
-            mmfe.system_init(widget)
-
-    def system_load(self, widget):
-        for mmfe in self.current_MMFEs():
-            mmfe.system_load(widget)
-
-    def set_IDs(self, widget):
-        for mmfe in self.current_MMFEs():
-            mmfe.set_IDs(widget)
-
-    def set_ip(self, widget):
-        for mmfe in self.current_MMFEs():
-            mmfe.set_ip(widget)
-            self.entry_mmfeID.set_text(str(mmfe.mmfeID))
-
-    def set_display(self, widget):
-        for mmfe in self.current_MMFEs():
-            mmfe.set_display(widget)
-
-    def set_display_no_enet(self, widget):
-        for mmfe in self.current_MMFEs():
-            mmfe.set_display_no_enet(widget)
-
-    def readout_vmm_callback(self, widget, ivmm):
-        for mmfe in self.current_MMFEs():
-            mmfe.readout_vmm_callback(widget, ivmm)
-
-    def reset_vmm_callback(self, widget, ivmm):
-        for mmfe in self.current_MMFEs():
-            mmfe.reset_vmm_callback(widget, ivmm)
-
     def __init__(self):
         print
         print "loading MMFE8 GUI"
@@ -197,13 +54,9 @@ class GUI:
         self.notebook.set_tab_pos(gtk.POS_TOP)
 
         self.button_exit = gtk.Button("EXIT")
-        self.button_exit.set_size_request(-1,-1)
         self.button_exit.connect("clicked", self.destroy)
 
         self.button_start = gtk.Button("Start")
-        self.button_start.child.set_justify(gtk.JUSTIFY_CENTER)
-        self.label_start = self.button_start.get_children()[0]
-        self.button_start.set_size_request(-1,-1)
         self.button_start.connect("clicked", self.start)
 
         self.button_start_all = gtk.Button("Start All MMFE")
@@ -216,7 +69,6 @@ class GUI:
         self.entry_pulses = gtk.Entry(max=3)
         self.entry_pulses.set_size_request(140, -1)
         self.entry_pulses.connect("activate", self.set_pulses)
-
         self.box_pulses = gtk.HBox()
         self.box_pulses.pack_start(self.entry_pulses, expand=False)
         self.box_pulses.pack_start(self.label_pulses, expand=False)
@@ -260,7 +112,7 @@ class GUI:
         self.button_SystemLoad = gtk.Button("VMM Load")
         self.button_SystemLoad.connect("clicked", self.system_load)
 
-        self.label_vmmGlobal_Reset = gtk.Label("vmm2")
+        self.label_vmmGlobal_Reset = gtk.Label("")
         self.label_vmmGlobal_Reset.set_markup('<span color="red">VMMs to Reset / Load</span>')
 
         self.vmm_reset_table = gtk.Table(rows=2, columns=8, homogeneous=True)
@@ -271,7 +123,7 @@ class GUI:
             self.vmm_reset_table.attach(gtk.Label(str(ivmm)),         left_attach=ivmm, right_attach=ivmm+1, top_attach=0, bottom_attach=1, xpadding=0, ypadding=0)
             self.vmm_reset_table.attach(self.vmm_reset_buttons[ivmm], left_attach=ivmm, right_attach=ivmm+1, top_attach=1, bottom_attach=2, xpadding=0, ypadding=0)
 
-        self.label_vmmReadoutMask = gtk.Label("vmm2")
+        self.label_vmmReadoutMask = gtk.Label("")
         self.label_vmmReadoutMask.set_markup('<span color="red">VMM Readout Enable</span>')
 
         self.vmm_readout_table = gtk.Table(rows=2, columns=8, homogeneous=True)
@@ -308,11 +160,9 @@ class GUI:
         self.label_leaky_readout.set_markup('<span color="red"> Leaky Readout </span>')
         self.button_leaky_readout = gtk.ToggleButton("Leaky Readout [OFF]")
         self.button_leaky_readout.connect("clicked", self.leaky_readout)
-        self.button_leaky_readout.set_size_request(-1,-1)
         
         self.button_read_XADC = gtk.Button("Read XADC")
         self.button_read_XADC.connect("clicked", self.read_xadc)
-        self.button_read_XADC.set_size_request(-1,-1)
         
         self.label_mmfe_global = gtk.Label("")
         self.label_mmfe_global.set_markup('<span color="red" size="18000"><b>MMFE Configuration</b></span>')
@@ -363,13 +213,10 @@ class GUI:
         self.label_display_id.set_markup('<span color="red">Scope  </span>')
         self.label_display_id.set_justify(gtk.JUSTIFY_CENTER)
 
-        self.label_Space21 = gtk.Label("    ")
-        self.box_labelID = gtk.HBox()
-
-        self.box_ResetID = gtk.VBox()
-        self.box_ResetID.pack_start(self.label_vmmGlobal_Reset,expand=False)
-        self.box_ResetID.pack_start(self.vmm_reset_table,expand=False)
-        self.box_ResetID.pack_start(self.button_resetVMM,expand=False)
+        self.box_reset_id = gtk.VBox()
+        self.box_reset_id.pack_start(self.label_vmmGlobal_Reset,expand=False)
+        self.box_reset_id.pack_start(self.vmm_reset_table,expand=False)
+        self.box_reset_id.pack_start(self.button_resetVMM,expand=False)
 
         self.box_ReadoutMask = gtk.VBox()
         self.box_ReadoutMask.pack_start(self.label_vmmReadoutMask, expand=False)
@@ -377,22 +224,17 @@ class GUI:
 
         self.box_vmmID = gtk.HBox()
         self.box_vmmID.pack_start(self.button_setIDs,    expand=False)
-        self.box_vmmID.pack_start(self.label_Space21,    expand=True)
+        self.box_vmmID.pack_start(gtk.Label("    "),     expand=True)
         self.box_vmmID.pack_start(self.label_display_id, expand=False)
         self.box_vmmID.pack_start(self.combo_display,    expand=False)
 
         self.frame_Reset = gtk.Frame()
         self.frame_Reset.set_shadow_type(gtk.SHADOW_OUT)
-        self.frame_Reset.add(self.box_ResetID)
+        self.frame_Reset.add(self.box_reset_id)
 
         self.frame_ReadoutMask = gtk.Frame()
         self.frame_ReadoutMask.set_shadow_type(gtk.SHADOW_OUT)
         self.frame_ReadoutMask.add(self.box_ReadoutMask)
-
-        self.box_buttons = gtk.VBox()
-        self.box_buttons.set_spacing(5)
-        self.box_buttons.set_border_width(5)
-        self.box_buttons.set_size_request(-1,-1)
 
         self.box_mmfe = gtk.VBox()
         self.box_mmfe.set_spacing(5)
@@ -780,8 +622,6 @@ class GUI:
         print "Done with default values"
         print
 
-        # --------------------------------------------------------------------------------
-
         self.page1_scrolledWindow = gtk.ScrolledWindow()
         self.page1_viewport = gtk.Viewport()
         self.page1_viewport.add(self.page1_box)
@@ -790,12 +630,154 @@ class GUI:
         self.notebook.append_page(self.page1_scrolledWindow, gtk.Label("MMFE"))
 
         self.box_GUI = gtk.HBox(homogeneous=0, spacing=0)
-        self.box_GUI.pack_start(self.box_buttons, expand=False)
         self.box_GUI.pack_end(self.notebook, expand=True)
 
         self.window.add(self.box_GUI)
         self.window.show_all()
         self.window.connect("destroy", self.destroy)
+
+    def destroy(self, widget):
+        print
+        print "Goodbye from the MMFE8 GUI!"
+        print
+        gtk.main_quit()
+
+    def write_vmm_config(self, widget):
+        for mmfe in self.current_MMFEs():
+            for vmm in self.current_VMMs(mmfe):
+                mmfe.write_vmm_config(widget, vmm)
+
+    def print_vmm_config(self, widget):
+        for mmfe in self.current_MMFEs():
+            for vmm in self.current_VMMs(mmfe):
+                mmfe.print_vmm_config(widget, vmm)
+
+    def read_xadc(self, widget):
+        for mmfe in self.current_MMFEs():
+            mmfe.read_xadc(widget)
+
+    def send_external_trig(self, widget):
+        for mmfe in self.current_MMFEs():
+            mmfe.send_external_trig(widget)
+
+    def leaky_readout(self, widget):
+        widget.set_label("Leaky Readout [ON]" if widget.get_active() else "Leaky Readout [OFF]")
+        for mmfe in self.current_MMFEs():
+            mmfe.leaky_readout(widget)
+
+    def internal_trigger(self, widget):
+        widget.set_label("Internal Trigger [ON]" if widget.get_active() else "Internal Trigger [OFF]")
+        for mmfe in self.current_MMFEs():
+            mmfe.internal_trigger(widget)
+
+    def external_trigger(self, widget):
+        widget.set_label("External Trigger [ON]" if widget.get_active() else "External Trigger [OFF]")
+        for mmfe in self.current_MMFEs():
+            mmfe.external_trigger(widget)
+
+    def set_pulses(self, widget):
+        try:
+            value = int(widget.get_text())
+        except ValueError:
+            print "ERROR: Pulses value must be a decimal number"
+            return 
+        if value < 0 or value > 999: #0x3E7
+            print "SDP value out of range"
+            print "0 <= Pulses <= 999" 
+            return
+
+        for mmfe in self.current_MMFEs():
+            mmfe.set_pulses(widget)
+
+    def set_acq_reset_count(self, widget):
+        try:
+            value = int(widget.get_text(), base=16)
+        except ValueError:
+            print "acq_count value must be a hex number"
+            return
+        if value < 0 or value > 0xffffffff: #0x3E7
+            print "Acq count value out of range"
+            print "0 <= acq_count <= 0xffffffff" 
+            return
+
+        for mmfe in self.current_MMFEs():
+            mmfe.set_acq_reset_count(widget)
+
+    def send_user_udp(self, widget):
+        """
+        Communicate with the MMFE directly.
+        r for read, w for write, p for poke, k for peek
+        Relevant registers include:
+            axi_reg(61) <=> 0x44A10104
+            axi_reg(62) <=> 0x44A10108
+            axi_reg(63) <=> 0x44A1010C
+            axi_reg(64) <=> 0x44A10110
+            axi_reg(65) <=> 0x44A10114
+        """
+        message = widget.get_text()
+
+        for mmfe in self.current_MMFEs():
+            mmfe.udp_message = message
+            mmfe.udp.udp_client(mmfe.udp_message, mmfe.UDP_IP, mmfe.UDP_PORT, debug=True)
+
+    def set_acq_reset_hold(self, widget):
+        try:
+            value = int(widget.get_text(), base=16)
+        except ValueError:
+            print "acq_hold value must be a hex number"
+            return
+        if value < 0 or value > 0xffffffff: #0x3E7
+            print "Acq hold value out of range"
+            print "0 <= acq_hold <= 0xffffffff" 
+            return
+
+        for mmfe in self.current_MMFEs():
+            mmfe.set_acq_reset_hold(widget)
+
+    def start(self, widget):
+        for mmfe in self.current_MMFEs():
+            mmfe.start(widget)
+
+    def start_all(self, widget):
+        for mmfe in self.MMFEs:
+            mmfe.start(widget)
+
+    def reset_global(self, widget):
+        for mmfe in self.current_MMFEs():
+            mmfe.reset_global(widget)
+
+    def system_init(self, widget):
+        for mmfe in self.current_MMFEs():
+            mmfe.system_init(widget)
+
+    def system_load(self, widget):
+        for mmfe in self.current_MMFEs():
+            mmfe.system_load(widget)
+
+    def set_IDs(self, widget):
+        for mmfe in self.current_MMFEs():
+            mmfe.set_IDs(widget)
+
+    def set_ip(self, widget):
+        for mmfe in self.current_MMFEs():
+            mmfe.set_ip(widget)
+            self.entry_mmfeID.set_text(str(mmfe.mmfeID))
+
+    def set_display(self, widget):
+        for mmfe in self.current_MMFEs():
+            mmfe.set_display(widget)
+
+    def set_display_no_enet(self, widget):
+        for mmfe in self.current_MMFEs():
+            mmfe.set_display_no_enet(widget)
+
+    def readout_vmm_callback(self, widget, ivmm):
+        for mmfe in self.current_MMFEs():
+            mmfe.readout_vmm_callback(widget, ivmm)
+
+    def reset_vmm_callback(self, widget, ivmm):
+        for mmfe in self.current_MMFEs():
+            mmfe.reset_vmm_callback(widget, ivmm)
 
     def set_current_mmfe(self, widget):
         self.current_mmfe = widget.get_active()
@@ -835,6 +817,63 @@ class GUI:
             return mmfe.VMM
         else:
             return [ mmfe.VMM[self.current_vmm] ]
+
+    def vmm_callback_bit(self, widget, register):
+
+        for mmfe in self.current_MMFEs():
+            for vmm in self.current_VMMs(mmfe):
+                vmm.globalreg[register] = 1 if widget.get_active() else 0
+
+    def vmm_callback_word(self, widget, register, nbits, reverse=False, debug=False):
+        """ 
+        Insert word (length: nbits) starting at register.
+        """
+        padding = "0%ib" % nbits
+        word    = format(int(widget.get_active()), padding)
+        if reverse:
+            word = word[::-1]
+        if debug:
+            print "Writing %s to register %s with %s bits | VMM_%s" % (word, register, nbits, self.current_vmm)
+
+        for mmfe in self.current_MMFEs():
+            for vmm in self.current_VMMs(mmfe):
+                if not reverse:
+                    vmm.globalreg[register:register+nbits]     = list(word)
+                else:
+                    vmm.globalreg[register-nbits+1:register+1] = list(word)
+
+    def channel_callback_bit(self, widget, ch, register):
+
+        for mmfe in self.current_MMFEs():
+            for vmm in self.current_VMMs(mmfe):
+                channels = vmm.channels if ch == "all" else [ vmm.channels[ch] ]
+                for channel in channels:
+                    channel.chan_val[register] = 1 if widget.get_active() else 0
+
+                    if widget in self.channel_SP[:-1]:
+                        widget.set_label("p" if widget.get_active() else "n")
+    
+                if ch == "all" and self.current_vmm != "all":
+                    self.refresh_channel_options()
+
+    def channel_callback_word(self, widget, ch, register, nbits):
+        """ 
+        Insert word (length: nbits) starting at register.
+        """
+        if widget.get_active() < 0:
+            return
+
+        padding = "0%ib" % nbits
+        word    = format(int(widget.get_active()), padding)
+
+        for mmfe in self.current_MMFEs():
+            for vmm in self.current_VMMs(mmfe):
+                channels = vmm.channels if ch == "all" else [ vmm.channels[ch] ]
+                for channel in channels:
+                    channel.chan_val[register:register+nbits] = list(word)
+
+                if ch == "all" and self.current_vmm != "all":
+                    self.refresh_channel_options()
 
     def refresh_mmfe_options(self):
 
@@ -894,63 +933,6 @@ class GUI:
         self.vmm_sc8b_menu.set_active( convert_to_int(vmm.globalreg[registers.SC8b  : registers.SC8b  - registers.bits_SC8b  : -1]))
         self.vmm_sc6b_menu.set_active( convert_to_int(vmm.globalreg[registers.SC6b  : registers.SC6b  - registers.bits_SC6b  : -1]))
 
-    def vmm_callback_bit(self, widget, register):
-
-        for mmfe in self.current_MMFEs():
-            for vmm in self.current_VMMs(mmfe):
-                vmm.globalreg[register] = 1 if widget.get_active() else 0
-
-    def vmm_callback_word(self, widget, register, nbits, reverse=False, debug=False):
-        """ 
-        Insert word (length: nbits) starting at register.
-        """
-        padding = "0%ib" % nbits
-        word    = format(int(widget.get_active()), padding)
-        if reverse:
-            word = word[::-1]
-        if debug:
-            print "Writing %s to register %s with %s bits | VMM_%s" % (word, register, nbits, self.current_vmm)
-
-        for mmfe in self.current_MMFEs():
-            for vmm in self.current_VMMs(mmfe):
-                if not reverse:
-                    vmm.globalreg[register:register+nbits]     = list(word)
-                else:
-                    vmm.globalreg[register-nbits+1:register+1] = list(word)
-
-    def channel_callback_bit(self, widget, ch, register):
-
-        for mmfe in self.current_MMFEs():
-            for vmm in self.current_VMMs(mmfe):
-                channels = vmm.chan_list if ch == "all" else [ vmm.chan_list[ch] ]
-                for channel in channels:
-                    channel.chan_val[register] = 1 if widget.get_active() else 0
-
-                    if widget in self.channel_SP[:-1]:
-                        widget.set_label("p" if widget.get_active() else "n")
-    
-                if ch == "all" and self.current_vmm != "all":
-                    self.refresh_channel_options()
-
-    def channel_callback_word(self, widget, ch, register, nbits):
-        """ 
-        Insert word (length: nbits) starting at register.
-        """
-        if widget.get_active() < 0:
-            return
-
-        padding = "0%ib" % nbits
-        word    = format(int(widget.get_active()), padding)
-
-        for mmfe in self.current_MMFEs():
-            for vmm in self.current_VMMs(mmfe):
-                channels = vmm.chan_list if ch == "all" else [ vmm.chan_list[ch] ]
-                for channel in channels:
-                    channel.chan_val[register:register+nbits] = list(word)
-
-                if ch == "all" and self.current_vmm != "all":
-                    self.refresh_channel_options()
-
     def refresh_channel_options(self):
 
         # quick set
@@ -966,7 +948,7 @@ class GUI:
 
         for ch in xrange(nchannels):
 
-            channel = vmm.chan_list[ch]
+            channel = vmm.channels[ch]
 
             self.channel_SP[ch].set_active( channel.chan_val[index.SP])
             self.channel_SC[ch].set_active( channel.chan_val[index.SC])

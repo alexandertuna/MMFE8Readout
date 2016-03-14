@@ -53,14 +53,13 @@ class VMM:
         self.reg              = np.zeros((64, 24), dtype=int)
         self.msg              = np.zeros((67),     dtype=np.uint32)
         self.globalreg        = np.zeros((96),     dtype=int)
-        self.chan_list        = []
-        
-        for chan_num in range(64):
-            self.chan_list.append(Channel(chan_num))
+        self.channels         = []
+        for ch in xrange(64):
+            self.channels.append(Channel(ch))
 
     def get_channel_val(self):
         for ch_num in range(64):
-            chan_val = self.chan_list[ch_num].get_chan_val()
+            chan_val = self.channels[ch_num].get_chan_val()
             for i in range(24):
                 self.reg[ch_num][i] = chan_val[i]
         return self.reg
