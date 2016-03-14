@@ -58,9 +58,9 @@ class VMM:
             self.channels.append(Channel(ch))
 
     def get_channel_val(self):
-        for ch_num in range(64):
-            chan_val = self.channels[ch_num].get_chan_val()
+        for ch in range(64):
+            value = self.channels[ch].get_value()
             for i in range(24):
-                self.reg[ch_num][i] = chan_val[i]
+                self.reg[ch][i] = value[i]
         return self.reg
 

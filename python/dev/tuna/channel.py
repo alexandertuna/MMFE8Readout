@@ -20,8 +20,8 @@ class index:
 class Channel:
 
     def __init__(self, channel_number):
-        self.chan_val = np.zeros((24), dtype=int)
+        self.value = np.zeros((24), dtype=int)
 
-    def get_chan_val(self):
-        return self.chan_val
+    def get_value(self):
+        return self.value
 

@@ -848,7 +848,7 @@ class GUI:
             for vmm in self.current_VMMs(mmfe):
                 channels = vmm.channels if ch == "all" else [ vmm.channels[ch] ]
                 for channel in channels:
-                    channel.chan_val[register] = 1 if widget.get_active() else 0
+                    channel.value[register] = 1 if widget.get_active() else 0
 
                     if widget in self.channel_SP[:-1]:
                         widget.set_label("p" if widget.get_active() else "n")
@@ -870,7 +870,7 @@ class GUI:
             for vmm in self.current_VMMs(mmfe):
                 channels = vmm.channels if ch == "all" else [ vmm.channels[ch] ]
                 for channel in channels:
-                    channel.chan_val[register:register+nbits] = list(word)
+                    channel.value[register:register+nbits] = list(word)
 
                 if ch == "all" and self.current_vmm != "all":
                     self.refresh_channel_options()
@@ -950,17 +950,17 @@ class GUI:
 
             channel = vmm.channels[ch]
 
-            self.channel_SP[ch].set_active( channel.chan_val[index.SP])
-            self.channel_SC[ch].set_active( channel.chan_val[index.SC])
-            self.channel_SL[ch].set_active( channel.chan_val[index.SL])
-            self.channel_ST[ch].set_active( channel.chan_val[index.ST])
-            self.channel_SM[ch].set_active( channel.chan_val[index.SM])
-            self.channel_SMX[ch].set_active(channel.chan_val[index.SMX])
+            self.channel_SP[ch].set_active( channel.value[index.SP])
+            self.channel_SC[ch].set_active( channel.value[index.SC])
+            self.channel_SL[ch].set_active( channel.value[index.SL])
+            self.channel_ST[ch].set_active( channel.value[index.ST])
+            self.channel_SM[ch].set_active( channel.value[index.SM])
+            self.channel_SMX[ch].set_active(channel.value[index.SMX])
 
-            self.channel_SD[ch].set_active(   convert_to_int(channel.chan_val[index.SD    : index.SD    + index.bits_SD]))
-            self.channel_SZ10b[ch].set_active(convert_to_int(channel.chan_val[index.SZ10b : index.SZ10b + index.bits_SZ10b]))
-            self.channel_SZ8b[ch].set_active( convert_to_int(channel.chan_val[index.SZ8b  : index.SZ8b  + index.bits_SZ8b]))
-            self.channel_SZ6b[ch].set_active( convert_to_int(channel.chan_val[index.SZ6b  : index.SZ6b  + index.bits_SZ6b]))
+            self.channel_SD[ch].set_active(   convert_to_int(channel.value[index.SD    : index.SD    + index.bits_SD]))
+            self.channel_SZ10b[ch].set_active(convert_to_int(channel.value[index.SZ10b : index.SZ10b + index.bits_SZ10b]))
+            self.channel_SZ8b[ch].set_active( convert_to_int(channel.value[index.SZ8b  : index.SZ8b  + index.bits_SZ8b]))
+            self.channel_SZ6b[ch].set_active( convert_to_int(channel.value[index.SZ6b  : index.SZ6b  + index.bits_SZ6b]))
 
     def vspace(self):
         return gtk.Label(" ")
