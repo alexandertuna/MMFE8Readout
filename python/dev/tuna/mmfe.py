@@ -1,9 +1,8 @@
 import time
 
-from vmm            import VMM
-from mmfe8_userRegs import userRegs
-from udp            import udp_stuff
-from helpers        import convert_to_32bit
+from vmm     import VMM
+from udp     import udp_stuff
+from helpers import convert_to_32bit
 
 import binstr
 import numpy as np
@@ -39,7 +38,6 @@ class MMFE:
         self.chnlReg              = np.zeros((51), dtype=int)
         self.byteint              = np.zeros((51), dtype=np.uint32)
         self.byteword             = np.zeros((32), dtype=int)
-        self.userRegs = userRegs()
 
         self.pulses          = 0
         self.acq_reset_count = 0
@@ -309,7 +307,6 @@ class MMFE:
 
     def set_ip(self, widget):
         self.UDP_IP = widget.get_text()
-        self.userRegs.set_udp_ip(self.UDP_IP)
 
         try:
             self.mmfeID = self.ipAddr.index(self.UDP_IP)
@@ -335,8 +332,7 @@ class MMFE:
 
     def set_board_ip(self, widget, textBox):
         choice = widget.get_active()
-        self.userRegs.set_udp_ip(self.ipAddr[choice])
-        self.UDP_IP =            self.ipAddr[choice]
+        self.UDP_IP = self.ipAddr[choice]
         textBox.set_text(str(choice))
         self.mmfeID = int(choice)
         print "MMFE8 IP address = %s and ID = %s" % (self.UDP_IP, self.mmfeID)
