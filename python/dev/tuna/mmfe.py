@@ -15,9 +15,9 @@ class MMFE:
 
         print "Creating instance of MMFE"
 
-        self.VMM = []
+        self.VMMs = []
         for _ in range(nvmms):
-            self.VMM.append(VMM())
+            self.VMMs.append(VMM())
 
         self.udp         = udp_stuff()
         self.UDP_PORT    = 50001

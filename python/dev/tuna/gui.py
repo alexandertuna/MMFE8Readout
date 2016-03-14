@@ -814,9 +814,9 @@ class GUI:
 
     def current_VMMs(self, mmfe):
         if self.current_vmm == "all":
-            return mmfe.VMM
+            return mmfe.VMMs
         else:
-            return [ mmfe.VMM[self.current_vmm] ]
+            return [ mmfe.VMMs[self.current_vmm] ]
 
     def vmm_callback_bit(self, widget, register):
 
@@ -895,7 +895,7 @@ class GUI:
     def refresh_vmm_options(self):
 
         mmfe = self.MMFEs[self.current_mmfe] if self.current_mmfe != "all" else sys.exit("Error: Cannot refresh VMMs of all MMFE.")
-        vmm  = mmfe.VMM[self.current_vmm]    if self.current_vmm  != "all" else sys.exit("Error: Cannot refresh all VMMs.")
+        vmm  = mmfe.VMMs[self.current_vmm]    if self.current_vmm  != "all" else sys.exit("Error: Cannot refresh all VMMs.")
 
         self.vmm_spg.set_active(      vmm.globalreg[registers.SPG])
         self.vmm_sdp.set_active(      vmm.globalreg[registers.SDP])
@@ -944,7 +944,7 @@ class GUI:
             obj.set_active(-1)
 
         mmfe = self.MMFEs[self.current_mmfe] if self.current_mmfe != "all" else sys.exit("Error: Cannot refresh VMMs of all MMFE.")
-        vmm  = mmfe.VMM[self.current_vmm]    if self.current_vmm  != "all" else sys.exit("Error: Cannot refresh all VMMs.")
+        vmm  = mmfe.VMMs[self.current_vmm]    if self.current_vmm  != "all" else sys.exit("Error: Cannot refresh all VMMs.")
 
         for ch in xrange(nchannels):
 
