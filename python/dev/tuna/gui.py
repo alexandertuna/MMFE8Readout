@@ -134,9 +134,12 @@ class GUI:
             self.vmm_readout_table.attach(gtk.Label(str(ivmm)),           left_attach=ivmm, right_attach=ivmm+1, top_attach=0, bottom_attach=1, xpadding=0, ypadding=0)
             self.vmm_readout_table.attach(self.vmm_readout_buttons[ivmm], left_attach=ivmm, right_attach=ivmm+1, top_attach=1, bottom_attach=2, xpadding=0, ypadding=0)
 
+        self.button_ping = gtk.Button("Ping MMFE IP")
+        self.button_ping.connect("clicked", self.ping_mmfe)
+
         self.button_print_config = gtk.Button("Print Config")
         self.button_write_config = gtk.Button("Write Config")
-        self.button_write_config.connect("clicked", self.write_vmm_config)        
+        self.button_write_config.connect("clicked", self.write_vmm_config)
         self.button_print_config.connect("clicked", self.print_vmm_config)
 
         self.button_configs = gtk.HBox()
@@ -244,8 +247,9 @@ class GUI:
         self.box_mmfe.pack_start(self.label_mmfe_global, expand=False)
         self.box_mmfe.pack_start(self.box_mmfe_number,   expand=False)
         self.box_mmfe.pack_start(self.box_ip,            expand=False)
-
         self.box_mmfe.pack_start(self.box_mmfeID,          expand=False)
+        self.box_mmfe.pack_start(self.button_ping,       expand=False)
+
         self.box_mmfe.pack_start(self.frame_ReadoutMask,   expand=False)
         self.box_mmfe.pack_start(self.box_vmmID,           expand=False)
         self.box_mmfe.pack_start(self.button_configs,      expand=False)
@@ -641,6 +645,10 @@ class GUI:
         print "Goodbye from the MMFE8 GUI!"
         print
         gtk.main_quit()
+
+    def ping_mmfe(self, widget):
+        for mmfe in self.current_MMFEs():
+            mmfe.ping()
 
     def write_vmm_config(self, widget):
         for mmfe in self.current_MMFEs():

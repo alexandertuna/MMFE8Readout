@@ -1,11 +1,11 @@
+import os
 import time
+import binstr
+import numpy as np
 
 from vmm     import VMM
 from udp     import udp_stuff
 from helpers import convert_to_32bit
-
-import binstr
-import numpy as np
 
 nvmms = 8
 
@@ -77,6 +77,12 @@ class MMFE:
         #0x44A1011C  #DS411_high                #High
         #0x44A10120  #counts_to_acq_reset       #0 to FFFF_FFFF #0=Not Used
         #0x44A10120  #counts_to_hold_acq_reset  #0 to FFFF_FFFF #0=Not Used
+
+    def ping(self):
+        print
+        print "Pinging MMFE: %s" % (self.UDP_IP)
+        os.system("ping %s -c 2" % (self.UDP_IP))
+        print
 
     def write_vmm_config(self, widget, vmm):
         """ 
