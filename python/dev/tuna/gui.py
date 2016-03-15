@@ -591,7 +591,7 @@ class GUI:
 
             self.vmm_sm_menu.set_active(8)
             self.vmm_sg_menu.set_active(5)
-            self.vmm_stc_menu.set_active(2)
+            self.vmm_stc_menu.set_active(0)
             self.vmm_sc8b_menu.set_active(3)
             self.vmm_sdt_menu.set_active(220)
             self.vmm_sdp2_menu.set_active(120)
