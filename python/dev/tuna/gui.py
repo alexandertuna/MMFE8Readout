@@ -8,6 +8,12 @@
 #    johns at physics.arizona.edu
 #
 #    This is version 7 of the MMFE8 GUI
+#
+#     Run like:
+#       $ python gui.py N
+#
+#     where N is the number of MMFE to read out.
+#
 
 import pygtk
 pygtk.require('2.0')
@@ -21,7 +27,7 @@ from udp     import udp_stuff
 from channel import index
 from helpers import convert_to_int, convert_to_32bit
 
-nmmfes    = 2
+nmmfes    = 1 if len(sys.argv)==1 else int(sys.argv[1])
 nvmms     = 8
 nchannels = 64
 
@@ -31,7 +37,7 @@ class GUI:
 
     def __init__(self):
         print
-        print "loading MMFE8 GUI"
+        print "Loading MMFE8 GUI with %i MMFE" % (nmmfes)
         print 
 
         self.MMFEs = []
