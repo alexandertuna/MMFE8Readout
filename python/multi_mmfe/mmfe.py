@@ -42,6 +42,7 @@ class MMFE:
         self.pulses          = 0
         self.acq_reset_count = 0
         self.acq_reset_hold  = 0
+        self.ext_trig_on     = 0
 
         self.mmfeID = 0
         self.ipAddr = ["127.0.0.1",
@@ -132,6 +133,33 @@ class MMFE:
             print "0x{0:08x}  register {1:2d}".format(bitword, iter)
         print
 
+    def check_for_data(self):
+        counter = 0
+        while self.ext_trig_on == 1:
+            counter = counter + 1
+            start = time.time()
+            check_reading = self.udp.udp_client("r 0x44A10144 1", self.UDP_IP, self.UDP_PORT)
+            print check_reading
+            if not check_reading:
+                print "UDP communication failed in check_for_data, exiting on counter %i" % (counter)
+                return
+            check_reading_str = check_reading.split()
+            if counter == 200:
+                print "done reading, maybe no data?"
+                break
+            if int(check_reading_str[2], 16) is 1:
+                print "read_data register is up!"
+                self.start()
+                reading_done = self.udp.udp_client("W 0x44A10140 1", self.UDP_IP, self.UDP_PORT) # write to other register that it is done
+                print reading_done
+                end = time.time()
+                print "reading timing: "
+                print end - start
+                sleep(.001)
+                reading_reset = self.udp.udp_client("W 0x44A10140 0", self.UDP_IP, self.UDP_PORT) # put flag back low
+                break
+        return
+
     def daq_readOut(self):
         data       = None
         fifo_count = 0
@@ -220,6 +248,7 @@ class MMFE:
             self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
             time.sleep(trig)
         print "Send Ext Trig Pulse Completed"
+        self.check_for_data()
                 
     def leaky_readout(self, widget):
         self.readout_runlength[25] = 1 if widget.get_active() else 0
@@ -231,6 +260,7 @@ class MMFE:
 
     def external_trigger(self, widget):
         self.readout_runlength[26] = 1 if widget.get_active() else 0
+        self.ext_trig_on = self.readout_runlength[26]
         self.write_readout_runlength()
 
     def set_pulses(self, widget, entry=None):
