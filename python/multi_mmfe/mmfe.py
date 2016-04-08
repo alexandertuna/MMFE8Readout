@@ -149,13 +149,13 @@ class MMFE:
                 break
             if int(check_reading_str[2], 16) is 1:
                 print "read_data register is up!"
-                self.start()
+                self.daq_readOut()
                 reading_done = self.udp.udp_client("W 0x44A10140 1", self.UDP_IP, self.UDP_PORT) # write to other register that it is done
                 print reading_done
                 end = time.time()
                 print "reading timing: "
                 print end - start
-                sleep(.001)
+                time.sleep(.001)
                 reading_reset = self.udp.udp_client("W 0x44A10140 0", self.UDP_IP, self.UDP_PORT) # put flag back low
                 break
         return
