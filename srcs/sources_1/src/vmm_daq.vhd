@@ -55,7 +55,9 @@ entity vmm_daq is
 --    counts_to_acq_reset      : in   std_logic_vector( 31 DOWNTO 0)
       acq_rst_hold_term_count : in  std_logic_vector(31 downto 0);
       dt_state_o              : out std_logic_vector(3 downto 0)  := (others => '0');
-      acq_rst_counter_o       : out std_logic_vector(31 downto 0) := (others => '0')
+      acq_rst_counter_o       : out std_logic_vector(31 downto 0) := (others => '0');
+      fifo_rst_from_ext_trig : in std_logic;
+      mmfe_id_reg : in std_logic_vector(3 downto 0)
       );
 
 end vmm_daq;
@@ -133,14 +135,20 @@ begin
       else
         case dt_state is
           when x"0" =>                  -- init the RO sequence
-            vmm_cktk_daq_en      <= '1';       -- cktk enabled
+           -- vmm_cktk_daq_en      <= '1';       -- cktk enabled --paolo
             wr_en                <= '0';       -- no fifo writes
             dt_reset             <= '1';       -- hold ro process in reset
             art_reset            <= '0';
             acq_rst_counter      <= (others => '0');
             acq_rst_hold_counter <= (others => '0');
             acq_rst_from_data0   <= '0';
-            dt_state             <= x"1";      -- go to wait state
+            if dt_done = '1' then
+              dt_state             <= x"0";      -- wait for reset process(clk_50)
+              vmm_cktk_daq_en      <= '0';  --paolo
+            else
+              dt_state             <= x"1";      -- go to wait state
+              vmm_cktk_daq_en      <= '1';  --paolo
+            end if;
 --ann changed following x1 state
           when x"1" =>                  --wait for data0
             if(vmm_data0 = '1') then    -- gotta live one
@@ -279,7 +287,7 @@ begin
             dt_state  <= x"9";
 
           when x"9" =>                  -- start the cleanup
-            vmm_cktk_daq_en <= '1';     -- cktk enabled 
+            vmm_cktk_daq_en <= '0';     -- cktk enabled --paolo 
             dt_reset        <= '1';     -- hold ro process in reset
             art_reset       <= '0';
             dt_state        <= x"0";    -- start the readout
@@ -301,7 +309,7 @@ begin
 
   --Clock in data0 and data1 on ckdt
 --      process( vmm_ckdt, reset, dt_reset, vmm_data0_C, vmm_data1, dt_cntr_intg0, dt_cntr_intg1)
-  process(vmm_ckdt, reset, dt_reset, vmm_data0, vmm_data1, dt_cntr_intg0, dt_cntr_intg1)
+  process(vmm_ckdt)
   begin
     if rising_edge(vmm_ckdt) then
       
@@ -478,11 +486,12 @@ begin
       
    fifo_64_32_512_inst : fifo_64_32_512
         PORT MAP (
-          rst => RESET,
+          rst => RESET or fifo_rst_from_ext_trig,
           wr_clk => vmm_clk_200,
           rd_clk => vmm_clk_200,
           din =>   b"000" & vmmNumber & vmm_data_buf(25 downto 0) &
-          b"1011" & turn_counter & vmm_data_buf(37 downto 26),
+          --nathan removed turn counter and added mmfe_id_reg nib
+          b"1011" & x"00"& mmfe_id_reg & x"0" & vmm_data_buf(37 downto 26),
           wr_en => wr_en,
           rd_en => rd_en,
           dout => dout,
