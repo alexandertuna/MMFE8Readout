@@ -143,14 +143,17 @@ class GUI:
         self.button_ping = gtk.Button("Ping MMFE IP")
         self.button_ping.connect("clicked", self.ping_mmfe)
 
-        self.button_print_config = gtk.Button("Print Config")
-        self.button_write_config = gtk.Button("Write Config")
-        self.button_write_config.connect("clicked", self.write_vmm_config)
-        self.button_print_config.connect("clicked", self.print_vmm_config)
+        self.button_write_config     = gtk.Button("Write Config")
+        self.button_write_config_all = gtk.Button("Write Config (all VMM)")
+        self.button_print_config     = gtk.Button("Print Config")
+        self.button_write_config.connect(    "clicked", self.write_vmm_config)
+        self.button_write_config_all.connect("clicked", self.write_vmm_config_all)
+        self.button_print_config.connect(    "clicked", self.print_vmm_config)
 
         self.button_configs = gtk.HBox()
-        self.button_configs.pack_start(self.button_write_config, expand=True)
-        self.button_configs.pack_start(self.button_print_config, expand=True)
+        self.button_configs.pack_start(self.button_write_config,     expand=True)
+        self.button_configs.pack_start(self.button_write_config_all, expand=True)
+        self.button_configs.pack_start(self.button_print_config,     expand=True)
 
         self.label_internal_trigger =  gtk.Label("")
         self.label_internal_trigger.set_markup('<span color="red"> Internal Trigger </span>')
@@ -655,6 +658,10 @@ class GUI:
     def ping_mmfe(self, widget):
         for mmfe in self.current_MMFEs():
             mmfe.ping()
+
+    def write_vmm_config_all(self, widget):
+        for mmfe in self.current_MMFEs():
+            mmfe.write_vmm_config_all(widget)
 
     def write_vmm_config(self, widget):
         for mmfe in self.current_MMFEs():

@@ -85,7 +85,24 @@ class MMFE:
         os.system("ping %s -c 2" % (self.UDP_IP))
         print
 
-    def write_vmm_config(self, widget, vmm):
+    def write_vmm_config_all(self, widget):
+        
+        vmm_config_addresses = ["0x44A10204",
+                                "0x44A102D0",
+                                "0x44A1039C",
+                                "0x44A10468",
+                                "0x44A10534",
+                                "0x44A10600",
+                                "0x44A106CC",
+                                "0x44A10798",
+                                ]
+
+        for vmm, address in zip(self.VMMs, vmm_config_addresses):
+            self.write_vmm_config(None, vmm, address, False)
+
+        self.load_IDs()
+
+    def write_vmm_config(self, widget, vmm, address="0x44A10020", load=True):
         """ 
         Create full config list.
         Command strings must be <= 100 chars due to bram limitations on artix7.
@@ -101,7 +118,7 @@ class MMFE:
 
         chunk_size         = 6
         words_to_write     = []
-        vmm_config_address = "0x44A10020"
+        vmm_config_address = address
 
         for iter in xrange(n_words):
 
@@ -113,11 +130,13 @@ class MMFE:
 
                 message = "w %s %s" % (vmm_config_address, " ".join(words_to_write))
                 self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
+                time.sleep(0.1)
 
                 words_to_write = []
                 vmm_config_address = "0x{0:X}".format(int(vmm_config_address, base=16) + 4*chunk_size)
 
-        self.load_IDs()
+        if load:
+            self.load_IDs()
 
     def print_vmm_config(self, widget, vmm):
         reg           = vmm.get_channel_val()
