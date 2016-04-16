@@ -24,6 +24,7 @@ class MMFE:
         self.UDP_IP      = "192.168.0.000"
         self.udp_message = "r 0x44A1xxxx 0x1"
 
+        self.vmm_load             = np.zeros((32), dtype=int)
         self.vmm_cfg_sel          = np.zeros((32), dtype=int)
         self.readout_runlength    = np.zeros((32), dtype=int)
         self.acq_count_runlength  = np.zeros((32), dtype=int)
@@ -314,6 +315,33 @@ class MMFE:
         self.control[2] = 0
         self.write_control()
 
+    def vmm_load_configs(self, widget):
+        for ivmm, vmm in enumerate(self.VMMs):
+            if self.vmm_load[ivmm]:
+                self.write_vmm_config(None, vmm)
+                self.system_load(None)
+
+    def vmm_load_readout(self, widget):
+        self.load_IDs()
+
+    def vmm_global_reset(self, widget):
+
+        for ivmm in xrange(len(self.VMMs)):
+            self.vmm_cfg_sel[ivmm] = 1
+        self.load_IDs()
+
+        self.control[0] = 1
+        self.write_control()
+        
+        time.sleep(0.1)
+        
+        self.control[0] = 0
+        self.write_control()
+        
+        for ivmm in xrange(len(self.VMMs)):
+            self.vmm_cfg_sel[ivmm] = 0
+        self.load_IDs()
+
     def reset_global(self, widget):
         self.control[0] = 1
         self.write_control()
@@ -404,5 +432,8 @@ class MMFE:
     def reset_vmm_callback(self, widget, ivmm):
         self.vmm_cfg_sel[ivmm] = 1 if widget.get_active() else 0
         # self.load_IDs()
+
+    def load_vmm_callback(self, widget, ivmm):
+        self.vmm_load[ivmm] = 1 if widget.get_active() else 0
 
 
