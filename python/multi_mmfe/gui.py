@@ -75,6 +75,7 @@ class GUI:
         self.entry_pulses = gtk.Entry(max=3)
         self.entry_pulses.set_size_request(140, -1)
         self.entry_pulses.connect("activate", self.set_pulses)
+
         self.box_pulses = gtk.HBox()
         self.box_pulses.pack_start(self.entry_pulses, expand=False)
         self.box_pulses.pack_start(self.label_pulses, expand=False)
@@ -112,7 +113,10 @@ class GUI:
         self.button_resetVMM = gtk.Button("VMM Global Reset")
         self.button_resetVMM.connect("clicked", self.reset_global)
 
-        self.button_SystemInit = gtk.Button("System Reset")
+        self.button_vmm_global_reset = gtk.Button("VMM Global Reset (all VMM)")
+        self.button_vmm_global_reset.connect("clicked", self.vmm_global_reset)
+
+        self.button_SystemInit = gtk.Button("MMFE System Reset")
         self.button_SystemInit.connect("clicked", self.system_init)
 
         self.button_SystemLoad = gtk.Button("VMM Load")
@@ -129,19 +133,23 @@ class GUI:
             self.vmm_reset_table.attach(gtk.Label(str(ivmm)),         left_attach=ivmm, right_attach=ivmm+1, top_attach=0, bottom_attach=1, xpadding=0, ypadding=0)
             self.vmm_reset_table.attach(self.vmm_reset_buttons[ivmm], left_attach=ivmm, right_attach=ivmm+1, top_attach=1, bottom_attach=2, xpadding=0, ypadding=0)
 
-        self.label_vmmReadoutMask = gtk.Label("")
-        self.label_vmmReadoutMask.set_markup('<span color="red">VMM Readout Enable</span>')
+        self.vmm_load_button = gtk.Button("Configure and load selected VMMs")
+        self.vmm_load_button.connect("clicked", self.vmm_load_configs)
+        self.vmm_load_table = gtk.Table(rows=1, columns=nvmms, homogeneous=True)
+        self.vmm_load_buttons = []
+        for ivmm in xrange(nvmms):
+            self.vmm_load_buttons.append(gtk.ToggleButton(str(ivmm)))
+            self.vmm_load_buttons[ivmm].connect("toggled", self.load_vmm_callback, ivmm)
+            self.vmm_load_table.attach(self.vmm_load_buttons[ivmm], left_attach=ivmm, right_attach=ivmm+1, top_attach=0, bottom_attach=1, xpadding=0, ypadding=0)
 
-        self.vmm_readout_table = gtk.Table(rows=2, columns=8, homogeneous=True)
+        self.vmm_readout_button = gtk.Button("Enable Readout for selected VMMs")
+        self.vmm_readout_button.connect("clicked", self.vmm_load_readout)
+        self.vmm_readout_table = gtk.Table(rows=1, columns=nvmms, homogeneous=True)
         self.vmm_readout_buttons = []
         for ivmm in xrange(nvmms):
-            self.vmm_readout_buttons.append(gtk.CheckButton())
+            self.vmm_readout_buttons.append(gtk.ToggleButton(str(ivmm)))
             self.vmm_readout_buttons[ivmm].connect("toggled", self.readout_vmm_callback, ivmm)
-            self.vmm_readout_table.attach(gtk.Label(str(ivmm)),           left_attach=ivmm, right_attach=ivmm+1, top_attach=0, bottom_attach=1, xpadding=0, ypadding=0)
-            self.vmm_readout_table.attach(self.vmm_readout_buttons[ivmm], left_attach=ivmm, right_attach=ivmm+1, top_attach=1, bottom_attach=2, xpadding=0, ypadding=0)
-
-        self.button_ping = gtk.Button("Ping MMFE IP")
-        self.button_ping.connect("clicked", self.ping_mmfe)
+            self.vmm_readout_table.attach(self.vmm_readout_buttons[ivmm], left_attach=ivmm, right_attach=ivmm+1, top_attach=0, bottom_attach=1, xpadding=0, ypadding=1)
 
         self.button_write_config     = gtk.Button("Write Config")
         self.button_write_config_all = gtk.Button("Write Config (all VMM)")
@@ -197,10 +205,14 @@ class GUI:
         self.entry_ip.set_text("192.168.0.101")
         self.entry_ip.set_editable(True)
         self.entry_ip.connect("activate", self.set_ip)
+        self.button_ping = gtk.Button("ping")
+        self.button_ping.connect("clicked", self.ping_mmfe)
 
         self.box_ip = gtk.HBox()
-        self.box_ip.pack_start(self.entry_ip, expand=False)
-        self.box_ip.pack_start(self.label_ip, expand=False)
+        self.box_ip.pack_start(self.entry_ip,     expand=False)
+        self.box_ip.pack_start(self.label_ip,     expand=False)
+        self.box_ip.pack_start(gtk.Label("    "), expand=True)
+        self.box_ip.pack_start(self.button_ping,  expand=False)
 
         self.combo_display = gtk.combo_box_new_text()
         for i in range(32):
@@ -230,9 +242,13 @@ class GUI:
         self.box_reset_id.pack_start(self.vmm_reset_table,expand=False)
         self.box_reset_id.pack_start(self.button_resetVMM,expand=False)
 
+        self.vmm_load_box = gtk.VBox()
+        self.vmm_load_box.pack_start(self.vmm_load_button, expand=False)
+        self.vmm_load_box.pack_start(self.vmm_load_table,  expand=False)
+
         self.box_ReadoutMask = gtk.VBox()
-        self.box_ReadoutMask.pack_start(self.label_vmmReadoutMask, expand=False)
-        self.box_ReadoutMask.pack_start(self.vmm_readout_table,    expand=False)
+        self.box_ReadoutMask.pack_start(self.vmm_readout_button, expand=False)
+        self.box_ReadoutMask.pack_start(self.vmm_readout_table,  expand=False)
 
         self.box_vmmID = gtk.HBox()
         self.box_vmmID.pack_start(self.button_setIDs,    expand=False)
@@ -248,6 +264,10 @@ class GUI:
         self.frame_ReadoutMask.set_shadow_type(gtk.SHADOW_OUT)
         self.frame_ReadoutMask.add(self.box_ReadoutMask)
 
+        self.vmm_load_frame = gtk.Frame()
+        self.vmm_load_frame.set_shadow_type(gtk.SHADOW_OUT)
+        self.vmm_load_frame.add(self.vmm_load_box)
+
         self.box_mmfe = gtk.VBox()
         self.box_mmfe.set_spacing(5)
         self.box_mmfe.set_border_width(5)
@@ -256,17 +276,22 @@ class GUI:
         self.box_mmfe.pack_start(self.label_mmfe_global, expand=False)
         self.box_mmfe.pack_start(self.box_mmfe_number,   expand=False)
         self.box_mmfe.pack_start(self.box_ip,            expand=False)
-        self.box_mmfe.pack_start(self.box_mmfeID,          expand=False)
-        self.box_mmfe.pack_start(self.button_ping,       expand=False)
-
-        self.box_mmfe.pack_start(self.frame_ReadoutMask,   expand=False)
-        self.box_mmfe.pack_start(self.box_vmmID,           expand=False)
-        self.box_mmfe.pack_start(self.button_configs,      expand=False)
-        self.box_mmfe.pack_start(self.frame_Reset,         expand=False)  
-
-        self.box_mmfe.pack_start(self.button_SystemInit,    expand=False)
-        self.box_mmfe.pack_start(self.button_SystemLoad,    expand=False)
+        self.box_mmfe.pack_start(self.box_mmfeID,        expand=False)
+        self.box_mmfe.pack_start(self.box_vmmID,         expand=False)
+        self.box_mmfe.pack_start(self.vspace(),          expand=False)
+ 
+        # self.box_mmfe.pack_start(self.frame_Reset,         expand=False)  
+        # self.box_mmfe.pack_start(self.button_configs,      expand=False)
+        self.box_mmfe.pack_start(self.frame_ReadoutMask,    expand=False)
         self.box_mmfe.pack_start(self.vspace(),             expand=False)
+
+        self.box_mmfe.pack_start(self.vmm_load_frame,       expand=False)
+        self.box_mmfe.pack_start(self.vspace(),             expand=False)
+
+        # self.box_mmfe.pack_start(self.button_SystemLoad,       expand=False)
+        self.box_mmfe.pack_start(self.button_vmm_global_reset, expand=False)
+        self.box_mmfe.pack_start(self.button_SystemInit,       expand=False)
+        self.box_mmfe.pack_start(self.vspace(),                expand=False)
 
         self.box_mmfe.pack_start(self.button_internal_trigger, expand=False)
         self.box_mmfe.pack_start(self.button_external_trigger, expand=False)
@@ -763,6 +788,18 @@ class GUI:
         for mmfe in self.MMFEs:
             mmfe.start(widget)
 
+    def vmm_load_readout(self, widget):
+        for mmfe in self.current_MMFEs():
+            mmfe.vmm_load_readout(widget)
+
+    def vmm_load_configs(self, widget):
+        for mmfe in self.current_MMFEs():
+            mmfe.vmm_load_configs(widget)
+
+    def vmm_global_reset(self, widget):
+        for mmfe in self.current_MMFEs():
+            mmfe.vmm_global_reset(widget)
+
     def reset_global(self, widget):
         for mmfe in self.current_MMFEs():
             mmfe.reset_global(widget)
@@ -791,6 +828,10 @@ class GUI:
     def set_display_no_enet(self, widget):
         for mmfe in self.current_MMFEs():
             mmfe.set_display_no_enet(widget)
+
+    def load_vmm_callback(self, widget, ivmm):
+        for mmfe in self.current_MMFEs():
+            mmfe.load_vmm_callback(widget, ivmm)
 
     def readout_vmm_callback(self, widget, ivmm):
         for mmfe in self.current_MMFEs():
@@ -912,6 +953,7 @@ class GUI:
         for ivmm in xrange(nvmms):
             self.vmm_readout_buttons[ivmm].set_active(mmfe.readout_runlength[16+ivmm])
             self.vmm_reset_buttons[  ivmm].set_active(mmfe.vmm_cfg_sel[ivmm])
+            self.vmm_load_buttons[   ivmm].set_active(mmfe.vmm_load[ivmm])
 
     def refresh_vmm_options(self):
 
