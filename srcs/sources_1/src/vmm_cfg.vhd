@@ -124,7 +124,8 @@ entity vmm_cfg is
       acq_rst_counter      : out array_8x32bit;
 
       acq_rst_from_ext_trig : in std_logic;
-      fifo_rst_from_ext_trig : in std_logic
+      fifo_rst_from_ext_trig : in std_logic;
+      int_trig : in std_logic
       );
 
 end vmm_cfg;
@@ -801,7 +802,7 @@ begin
       sync_acq_rst_from_ext_trig <= acq_rst_from_ext_trig;
     end if;
   end process;
-  
+
   GEN_ACQ_RST :
   for I in 0 to 7 generate
   begin
@@ -809,9 +810,9 @@ begin
       port map(
         clk     => vmm_clk_100,         -- main clock
         rst     => reset,               -- reset
-        acq_rst => acq_rst_from_vmm_fsm_vec(I) or sync_acq_rst_from_ext_trig,  -- input
+--        acq_rst => acq_rst_from_vmm_fsm_vec(I) or sync_acq_rst_from_ext_trig,  -- input
         -- ann added ext_trig
---        acq_rst => acq_rst_from_vmm_fsm_vec(I) or acq_rst_from_data0(I) or acq_rst_from_ext_trig,  -- input
+        acq_rst => acq_rst_from_vmm_fsm_vec(I) or (acq_rst_from_data0(I) and int_trig) or (sync_acq_rst_from_ext_trig and not(int_trig)),  -- input
         -- REMOVED ACQ_RST_FROM_DATA0
         vmm_wen             => vmm_wen_acq_rst(I),     -- or with cfg sm
         vmm_ena             => vmm_ena_acq_rst(I),     -- or with cfg sm

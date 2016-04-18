@@ -581,7 +581,8 @@ architecture STRUCTURE of toplevel is
                 dt_state             : out array_8x4bit;
                 acq_rst_counter      : out array_8x32bit;
                 acq_rst_from_ext_trig : in std_logic;
-                fifo_rst_from_ext_trig : in std_logic
+                fifo_rst_from_ext_trig : in std_logic;
+                int_trig : in std_logic
                 );
     end component;
 
@@ -647,7 +648,6 @@ architecture STRUCTURE of toplevel is
             vmm_ena_vmm_cfg_sm     : in std_logic;
             acq_rst_from_vmm_fsm   : in std_logic;
             vmm_ena_vmm_cfg_sm_vec : in std_logic_vector(7 downto 0);
-
             acq_rst_from_data0  : in std_logic_vector(7 downto 0);
             vmm_acq_rst_running : in std_logic_vector(7 downto 0);
             acq_rst_term_count  : in std_logic_vector(31 downto 0);
@@ -1515,12 +1515,80 @@ begin
 
 
 -- implemented CKTP synchronization with CKBC, set by variable called
--- delay_count which is axi register 74 (values of 0, 1, 2, 3, 4 corresponding
+-- delay_count which is axi register 78 (values of 0, 1, 2, 3, 4 corresponding
 -- to multiples of 5 ns)
+-- note: this only works with a calibration routine in the sense that you have
+-- to pulse once with 0, pulse once with 1, etc. in order
+-- otherwise the delays might skip +/ 5 ns
+-- but this doesn't matter for timing resolution studies, ALWAYS is
+-- synchronized to the same point even if it skips to a different "delay pt"
 -- keep in mind the tp period has to be in multiples of 25 ns
-
+-- needs cleanup to make more readable/work better!
+--
 
 --CALIBRATION STUFF
+
+    -- this is only switched on if ext_trigger_in_sel is off! AKA the ext
+    -- trigger button is toggled low
+    --CKTP_calibration : process(clk_200)
+    --begin
+    --  if rising_edge(clk_200) then
+    --    if ((int_trig_edge = '1' or reset = '1') and (ext_trigger_in_sel = '0')) then
+    --      cktp_done <= '0';
+    --      if clk_bc_out = '1' then        --sync with CKBC
+    --        rise_counter <= rise_counter + '1';
+    --        if to_integer(unsigned(rise_counter)) = 1 then
+    --          clk_tp_cntr  <= clk_tp_period_cnt_calib;
+    --          clk_tp_out   <= '0';
+    --          rise_counter <= (others => '0');
+    --        end if;
+    --      elsif clk_bc_out = '0' then     --want this to reset every cycle
+    --        rise_counter <= (others => '0');
+    --      end if;
+    --    else
+    --      if((int_trig = '1') and (cktp_done = '0') and (ext_trigger_in_sel = '0') and (vmm_cktp_en = '1')) then  -- vmm_cktp_en currently hardwired to '1'
+    --        if clk_tp_cntr = clk_tp_period_cnt_calib then
+    --          if clk_bc_out = '0' and clk_tp_out = '0' then
+    --            if delay_counter = delay_count then
+    --              clk_tp_out  <= '1';
+    --              clk_tp_cntr <= delay_count + '1';
+    --            else
+    --              delay_counter <= delay_counter + '1';
+    --            end if;
+    --          elsif to_integer(unsigned(delay_counter)) /= 0 and clk_tp_out = '0' then
+    --            if delay_counter = delay_count then
+    --              clk_tp_out  <= '1';
+    --              clk_tp_cntr <= delay_count + '1';
+    --            else
+    --              delay_counter <= delay_counter + '1';
+    --            end if;
+    --          end if;
+    --        else
+    --          clk_tp_cntr <= clk_tp_cntr + '1';
+    --          if clk_tp_cntr = clk_tp_dutycycle_cnt_calib then
+    --            clk_tp_out    <= '0';
+    --            delay_counter <= (others => '0');
+    --          end if;
+    --        end if;
+    --      elsif cktp_done = '1' and clk_tp_out = '1' then
+    --        clk_tp_cntr <= clk_tp_cntr + '1';
+    --        if clk_tp_cntr = clk_tp_dutycycle_cnt_calib then
+    --          clk_tp_out    <= '0';
+    --          delay_counter <= (others => '0');
+    --        end if;
+    --      end if;
+
+    --      if pulses = x"03e7" then        -- x"03e7" <=> 999 
+    --        cktp_done <= '0';
+    --      else
+    --        if counter_for_cktp_done = pulses then
+    --          cktp_done <= '1';
+    --        end if;
+    --      end if;
+    --    end if;
+    --  end if;
+    --end process U_cktp_gen;
+
 
     CKTP_calibration : process(clk_200)
     begin
@@ -1983,14 +2051,14 @@ begin
 
             acq_rst_term_count      => acq_rst_term_count,
             acq_rst_hold_term_count => acq_rst_hold_term_count,
-
             acq_rst_from_data0_o => acq_rst_from_data0,
 --        vmm_acq_rst_running     => vmm_acq_rst_running,
 --        acq_rst_term_count      => acq_rst_term_count,
             dt_state             => dt_state,
             acq_rst_counter      => acq_rst_counter,
             acq_rst_from_ext_trig => acq_rst_from_ext_trig,
-            fifo_rst_from_ext_trig => fifo_rst
+            fifo_rst_from_ext_trig => fifo_rst,
+            int_trig => int_trig
             );
 
 
