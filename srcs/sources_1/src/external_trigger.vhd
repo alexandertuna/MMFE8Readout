@@ -65,7 +65,8 @@ entity external_trigger is
         acq_rst_from_ext_trig_o : out std_logic;                       
         vmm_cktk_ext_trig_en_o  : out std_logic;
         read_data_o             : out std_logic;  -- goes to axi_reg_78
-        fifo_rst_from_ext_trig_o : out std_logic 
+        fifo_rst_from_ext_trig_o : out std_logic;
+        ext_trigger_edge_slow : in std_logic
         );
 
 end external_trigger;
@@ -77,21 +78,26 @@ architecture Behavioral of external_trigger is
 
   constant bcid_offset         : std_logic_vector (11 downto 0) := x"716";  --x"005";
   --jh added first '0' to x"0FA0"; decleration because of synth error...
-  constant busy_width          : std_logic_vector (15 downto 0) := x"0FA0";  -- time busy is set (1 ms) busy_width = f_clk / (1/t_desired) --kg changed to 1/10 what it was
-  constant fifo_drain_length   : std_logic_vector (15 downto 0) := x"1F40";  --8000 ticks,
+--  constant busy_width          : std_logic_vector (15 downto 0) := x"0FA0";  -- time busy is set (1 ms) busy_width = f_clk / (1/t_desired) --kg changed to 1/10 what it was
+  constant busy_width          : std_logic_vector (19 downto 0) := x"00FA0";  -- time busy is set (1 ms) busy_width = f_clk / (1/t_desired) --kg changed to 1/10 what it was
+  constant fifo_drain_length   : std_logic_vector (19 downto 0) := x"01F40";  --8000 ticks,
+                                                                             --200 microsec
+--  constant fifo_drain_length   : std_logic_vector (15 downto 0) := x"1F40";  --8000 ticks,
                                                                              --200 microsec
 --  constant trigger_gui_pass_length : std_logic_vector (15 downto 0) := x"FFFD";  
-  constant trigger_gui_pass_length : std_logic_vector (15 downto 0) := x"3E80";  
+  constant trigger_gui_pass_length : std_logic_vector (19 downto 0) := x"09C40";  
+--  constant trigger_gui_pass_length : std_logic_vector (19 downto 0) := x"02710";  
   constant trigger_pulse_width : std_logic_vector (3 downto 0)  := x"A";  --trigger pulse width of 250ns. trigger_pulse_width = t_desired / t_clk
   signal   trigger             : std_logic;
   signal   trigger_pulse       : std_logic;
   signal   busy                : std_logic := '0';
   signal   busy_from_acq_rst   : std_logic                      := '0';
-  signal   busy_count          : std_logic_vector (15 downto 0);
+  signal   busy_count          : std_logic_vector (19 downto 0);
+--  signal   busy_count          : std_logic_vector (15 downto 0);
   signal   trigger_pulse_count : std_logic_vector(3 downto 0);
   signal   trigger_was_low     : std_logic;  --flag to check that ext_trigger has been low after busy is done. This eliminates problem of trigger
                                              -- pulse firing again once busy goes low if ext_trigger never goes low.
-
+  signal trigger_incoming : std_logic := '0';
   signal reset_bcid_counter_i    : std_logic;
   signal ext_trigger_in_i        : std_logic;
   signal ext_trigger_en_i        : std_logic;
@@ -115,6 +121,7 @@ architecture Behavioral of external_trigger is
   signal acq_rst_from_ext_trig   : std_logic := '0';
   signal vmm_cktk_ext_trig_en    : std_logic := '1';
   signal read_data               : std_logic := '0';
+  signal passed_read_time        : std_logic := '0';
   signal fifo_rst                : std_logic := '0';
   signal acq_rst_length     : std_logic_vector(15 downto 0) := x"000A";  -- how long acquistion reset is
   signal acq_rst_length_ctr : std_logic_vector(15 downto 0) := x"0000";
@@ -164,6 +171,9 @@ begin
   process (clk_40, reset_bcid_counter, ext_trigger_in, ext_trigger_en)
   begin
     if (ext_trigger_en = '1') then
+      if (ext_trigger_edge_slow = '1') then
+        trigger_incoming <= '1';
+      end if;
       if (reset_bcid_counter = '1') then
         --  this comes from the state machine that starts the bc clock
         bcid_counter    <= x"000";
@@ -187,15 +197,16 @@ begin
           acq_rst_length_ctr    <= (others => '0');
 
         --sets busy low after soft reset finishes
-        elsif acq_rst_from_ext_trig = '0' and (busy_from_acq_rst = '1')then
+        elsif acq_rst_from_ext_trig = '0' and (busy_from_acq_rst = '1') and busy = '0' then
           busy_from_acq_rst    <= '0';
           fifo_rst             <= '0';
           vmm_cktk_ext_trig_en <= '1';
 --          bcid_counter         <= bcid_counter + '1';
-        elsif acq_rst_from_ext_trig = '0' and (busy = '1') and (reading_fin = '1') and (read_data = '0') then
+        elsif acq_rst_from_ext_trig = '0' and (busy = '1') and (passed_read_time = '1') and (read_data = '0') then
           busy  <= '0';
           fifo_rst             <= '0';  --maybe take this out
           vmm_cktk_ext_trig_en <= '1';
+          trigger_incoming <= '0';
 --          bcid_counter         <= bcid_counter + '1';
         elsif (bcid_counter = x"fff" and busy = '0' and ext_trigger_in = '0') then  
           --so if 4095 and also not busy from an external trigger
@@ -209,13 +220,14 @@ begin
 
         if (busy = '0') then
           --  here comes an external trigger and we were waiting for one
-          if (ext_trigger_in = '1' and trigger_was_low = '1') then
+          if (ext_trigger_in = '1' and trigger_was_low = '1' and trigger_incoming = '1') then
 --          if (ext_trigger_in = '1' and trigger_was_low = '1')then
             -- generate a trigger pulse and busy
             trigger_pulse         <= '1';
             busy                  <= '1';
             trigger_was_low       <= '0';
             fifo_rst              <= '0';
+            passed_read_time      <= '0';
             bcid_captured         <= bcid_counter;
             turn_counter_captured <= turn_counter;
             num_ext_trig          <= num_ext_trig + '1';  --ann
@@ -230,16 +242,17 @@ begin
           if (busy_count = fifo_drain_length) then
             read_data <= '1';
           -- after data is read, send resets
-          elsif (reading_fin = '1' and read_data = '1') then
---          elsif (busy_count > trigger_gui_pass_length) then
+--          elsif (reading_fin = '1' and read_data = '1') then
+          elsif (busy_count = trigger_gui_pass_length) then
             -- reading_fin_i is the rising edge of the signal set by the GUI to
             -- say that it's done reading
             read_data <= '0';
+            fifo_rst              <= '1'; --not sure about this step
+            passed_read_time <= '1';
             acq_rst_from_ext_trig <= '1';
             bcid_counter          <= x"000";
             vmm_cktk_ext_trig_en  <= '0';        --disables CKTK 
             turn_counter          <= turn_counter + '1';
-            trigger_was_low       <= '1';
           end if;
           if (trigger_pulse_count >= trigger_pulse_width - '1') then
             trigger_pulse <= '0';
@@ -267,7 +280,7 @@ begin
   begin
     if clk_40 = '1' and clk_40'event then
       if busy = '0' or reset_bcid_counter = '1' then
-        busy_count <= x"0000";
+        busy_count <= x"00000";
       elsif busy = '1' then
         busy_count <= busy_count + '1';
       end if;

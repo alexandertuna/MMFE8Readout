@@ -429,7 +429,8 @@ architecture STRUCTURE of toplevel is
               vmm_cktk_ext_trig_en_o  : out std_logic;
               read_data_o             : out std_logic;
               fifo_rst_from_ext_trig_o : out std_logic;
-              reading_fin : in std_logic
+              reading_fin : in std_logic;
+              ext_trigger_edge_slow : in std_logic
               );
     end component;
 
@@ -988,8 +989,13 @@ architecture STRUCTURE of toplevel is
     signal ext_trigger_en  : std_logic;
     signal ext_trigger_flag: std_logic;
     signal ext_trigger_sim : std_logic;  --ann
+    signal ext_trigger_sync : std_logic;  --ann
+
     signal ext_trigger_d : std_logic := '0';  --ann
-    signal ext_trigger_edge : std_logic;  --ann
+    signal ext_trigger_edge : std_logic;  --ann    
+    signal ext_trigger_d_slow : std_logic := '0';  --ann
+        signal ext_trigger_d2_slow : std_logic := '0';  --ann
+    signal ext_trigger_edge_slow : std_logic;  --ann
     signal reading_fin_flag : std_logic;  --ann
     signal reading_fin_flag_d : std_logic;  --ann
     signal reading_fin_flag_edge : std_logic;  --ann
@@ -1700,7 +1706,22 @@ begin
       ext_trigger_edge <= (not(ext_trigger_d) and ext_trigger_sim);
     end process ext_trig_edge_detect;
 
-
+    ext_trig_edge_detect_slow : process(clk_40, ext_trigger_sim, ext_trigger_d_slow)
+    begin
+    --should sustain ext_trigger_edge_slow for 50 ns after cktp_done = '1'
+      if rising_edge(clk_40) then
+            ext_trigger_d_slow <= ext_trigger_sim;     
+      end if;
+      ext_trigger_edge_slow <= (not(ext_trigger_d_slow) and ext_trigger_sim);
+    end process ext_trig_edge_detect_slow;
+    
+    ext_trig_gate : process(clk_40, ext_trigger_sim)
+    begin
+    --rising edge detect
+      if rising_edge(clk_40) then
+            ext_trigger_sync <= ext_trigger_sim;     
+      end if;
+    end process ext_trig_gate;
     
 -- simulated input
     ext_trigger_sel : process (ext_trigger_in_sel, clk_40)
@@ -1708,6 +1729,7 @@ begin
       if rising_edge(clk_40) then
         if ext_trigger_in_sel = '1' then
 --          if ext_trigger_sim = '1' then
+--          if ext_trigger_edge_slow = '1' and cktp_done = '1' then
           if ext_trigger_sim = '1' and cktp_done = '1' then
             ext_trigger_flag <= '1';
             ext_trigger_delayed <= ext_trigger_flag;
@@ -1789,7 +1811,8 @@ begin
             vmm_cktk_ext_trig_en_o => vmm_cktk_ext_trig_en,
             read_data_o => read_data,
             fifo_rst_from_ext_trig_o => fifo_rst,
-            reading_fin => reading_fin_flag
+            reading_fin => reading_fin_flag,
+            ext_trigger_edge_slow => ext_trigger_edge_slow
             );
 
 
