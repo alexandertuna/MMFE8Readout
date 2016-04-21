@@ -7,3 +7,6 @@ def convert_to_int(list_of_bits):
 def convert_to_32bit(list_of_bits):
     return sum([int(list_of_bits[bit])*pow(2, bit) for bit in xrange(32)])
 
+def convert_to_bits(word32):
+    return [int(bit) for bit in reversed("{0:032b}".format(word32))]
+
