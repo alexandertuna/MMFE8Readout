@@ -318,8 +318,12 @@ class MMFE:
     def vmm_load_configs(self, widget):
         for ivmm, vmm in enumerate(self.VMMs):
             if self.vmm_load[ivmm]:
+                self.vmm_cfg_sel[ivmm] = 1
                 self.write_vmm_config(None, vmm)
+                self.system_init(None)
                 self.system_load(None)
+                time.sleep(1)
+                self.vmm_cfg_sel[ivmm] = 0
 
     def vmm_load_readout(self, widget):
         self.load_IDs()
