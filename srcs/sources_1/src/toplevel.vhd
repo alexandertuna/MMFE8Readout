@@ -1469,10 +1469,7 @@ begin
     U_cktp_gen : process(clk_100, reset)
     begin
         if rising_edge(clk_100) then
-            if ((reset = '1' or ext_trigger_edge= '1') and (ext_trigger_in_sel = '1')) then --
-              -- reset=1 or (                           and         ) should be
-              -- paolo 
---            if (int_trig_edge = '1' or  reset = '1') then
+            if ((reset = '1' or ext_trigger_edge= '1') and (ext_trigger_in_sel = '1') and (ext_trig_w_pulse = '1')) then --
                 clk_tp_cntr <= clk_tp_period_cnt;
                 clk_tp_out  <= '0';
                 cktp_done   <= '0';
