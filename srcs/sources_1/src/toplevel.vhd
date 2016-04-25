@@ -760,8 +760,8 @@ architecture STRUCTURE of toplevel is
     signal clk_tp_period_cnt    : std_logic_vector(19 downto 0) := x"007D0";--20 us
     signal clk_tp_dutycycle_cnt : std_logic_vector(19 downto 0) := x"003E8";--10 us
 
-    signal clk_tp_period_cnt_calib    : std_logic_vector(19 downto 0) := x"F4240"; --1 kHz
-    signal clk_tp_dutycycle_cnt_calib : std_logic_vector(19 downto 0) := x"61A80"; -- 500 microseconds
+    signal clk_tp_period_cnt_calib    : std_logic_vector(19 downto 0) := x"30D40"; --1 kHz
+    signal clk_tp_dutycycle_cnt_calib : std_logic_vector(19 downto 0) := x"186A0"; -- 500 microseconds
 
     signal counter_for_cktp_done : std_logic_vector(15 downto 0) := x"0000";
     signal cktp_done             : std_logic                     := '0';
