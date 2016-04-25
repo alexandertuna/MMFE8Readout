@@ -79,20 +79,20 @@ architecture Behavioral of external_trigger is
   constant bcid_offset         : std_logic_vector (11 downto 0) := x"716";  --x"005";
   --jh added first '0' to x"0FA0"; decleration because of synth error...
 --  constant busy_width          : std_logic_vector (15 downto 0) := x"0FA0";  -- time busy is set (1 ms) busy_width = f_clk / (1/t_desired) --kg changed to 1/10 what it was
-  constant busy_width          : std_logic_vector (19 downto 0) := x"00FA0";  -- time busy is set (1 ms) busy_width = f_clk / (1/t_desired) --kg changed to 1/10 what it was
-  constant fifo_drain_length   : std_logic_vector (19 downto 0) := x"01F40";  --8000 ticks,
+  constant busy_width          : std_logic_vector (23 downto 0) := x"000FA0";  -- time busy is set (1 ms) busy_width = f_clk / (1/t_desired) --kg changed to 1/10 what it was
+  constant fifo_drain_length   : std_logic_vector (23 downto 0) := x"001F40";  --8000 ticks,
                                                                              --200 microsec
 --  constant fifo_drain_length   : std_logic_vector (15 downto 0) := x"1F40";  --8000 ticks,
                                                                              --200 microsec
 --  constant trigger_gui_pass_length : std_logic_vector (15 downto 0) := x"FFFD";  
-  constant trigger_gui_pass_length : std_logic_vector (19 downto 0) := x"09C40";  
---  constant trigger_gui_pass_length : std_logic_vector (19 downto 0) := x"02710";  
+  constant trigger_gui_pass_length : std_logic_vector (23 downto 0) := x"0186A0";  --2.5 ms
+--  constant trigger_gui_pass_length : std_logic_vector (23 downto 0) := x"124F80";  --30 ms
   constant trigger_pulse_width : std_logic_vector (3 downto 0)  := x"A";  --trigger pulse width of 250ns. trigger_pulse_width = t_desired / t_clk
   signal   trigger             : std_logic;
   signal   trigger_pulse       : std_logic;
   signal   busy                : std_logic := '0';
   signal   busy_from_acq_rst   : std_logic                      := '0';
-  signal   busy_count          : std_logic_vector (19 downto 0);
+  signal   busy_count          : std_logic_vector (23 downto 0);
 --  signal   busy_count          : std_logic_vector (15 downto 0);
   signal   trigger_pulse_count : std_logic_vector(3 downto 0);
   signal   trigger_was_low     : std_logic;  --flag to check that ext_trigger has been low after busy is done. This eliminates problem of trigger
@@ -247,8 +247,8 @@ begin
             -- reading_fin_i is the rising edge of the signal set by the GUI to
             -- say that it's done reading
             read_data <= '0';
-            fifo_rst              <= '1'; --not sure about this step
             passed_read_time <= '1';
+            fifo_rst <= '1';
             acq_rst_from_ext_trig <= '1';
             bcid_counter          <= x"000";
             vmm_cktk_ext_trig_en  <= '0';        --disables CKTK 
@@ -280,7 +280,7 @@ begin
   begin
     if clk_40 = '1' and clk_40'event then
       if busy = '0' or reset_bcid_counter = '1' then
-        busy_count <= x"00000";
+        busy_count <= x"000000";
       elsif busy = '1' then
         busy_count <= busy_count + '1';
       end if;
