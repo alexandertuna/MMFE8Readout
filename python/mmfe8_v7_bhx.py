@@ -159,15 +159,6 @@ class MMFE8:
         #sleep(5)
         #self.daq_readOut()
         return
-
-    def glob_DC_value(self, widget):
-        active = widget.get_active()
-        if active < 0:
-            return None
-        else:
-            DC = active
-            MSGsend1 = "W 0x44A10148 {0:02x} \0\n".format(DC)
-            self.udp.udp_client(MSGsend1,self.UDP_IP,self.UDP_PORT)
                
 
     def read_reg(self,widget):
@@ -210,9 +201,45 @@ class MMFE8:
     #    Readout Functions
     ######################################################
 
+    def check_for_data(self):
+        start = time.time()
+        counter = 0
+        while self.ext_trig_on is 1:
+            counter = counter + 1
+            start = time.time()
+            msg = "r 0x44A10144 1" # read read_data variable in FPGA
+            check_reading = self.udp.udp_client(msg,self.UDP_IP,self.UDP_PORT)
+            print "time chkpt: ",time.time()-start
+            check_reading_str = string.split(check_reading, ' ')
+            if counter is 200:
+                print "done reading, maybe no data?"
+                break
+            if int(check_reading_str[2],16) is 1:
+                print "counter number: ", counter
+                # implement some writing to another register
+#                print "read_data register is up!"
+                bcidreg = "r 0x44A1014C 1" # read bcid_captured and external_trigger number in FPGA
+                check_bcidreg = self.udp.udp_client(bcidreg,self.UDP_IP,self.UDP_PORT)
+                check_bcidreg_str = string.split(check_bcidreg, ' ')
+                self.bcid_reg = check_bcidreg_str[2]
+                end = time.time()
+                delta = end-start
+                print "timing for check for data before start: ", delta
+                self.start(self)
+                print "reading done!"
+#                msg2 = "W 0x44A10140 1 \0\n" # write to other register that it is done
+#                reading_done = self.udp.udp_client(msg2,self.UDP_IP,self.UDP_PORT)
+#                print reading_done
+#                sleep(.001)
+#                msg3 = "W 0x44A10140 0" # put flag back low  
+#                reading_reset = self.udp.udp_client(msg3,self.UDP_IP,self.UDP_PORT)
+                break
+        return
+            
     def daq_readOut(self):
         fifoCnt = 0
         r=10
+        start = time.time()
         #while ( ( fifoCnt == 0) and ( self.terminate == 0)):
         while ( ( fifoCnt == 0) and ( r != 0)):
             #if( self.terminate == 1):
@@ -220,11 +247,12 @@ class MMFE8:
             r = r -1
             msgFifoCnt = "r 0x44A10014 1 \0 \n" # read word count of data fifo
             FifoCntData = self.udp.udp_client(msgFifoCnt,self.UDP_IP,self.UDP_PORT)
-            print FifoCntData
+ #           print FifoCntData
             FifoCntStr = string.split(FifoCntData,' ') # split the string to a list
-            print FifoCntStr
+#            print FifoCntStr
             fifoCnt = int(FifoCntStr[2],16) # We now have the number of words in the FIFO
-            sleep(1)
+#            print "read num words", time.time()-start
+  #          sleep(1)
         print "FIFOCNT ", fifoCnt
         if fifoCnt % 2 == 0:
             fcnt = fifoCnt
@@ -233,6 +261,7 @@ class MMFE8:
             fcnt = (fifoCnt - 1)
         cycles = fcnt / 10  # reading 10 32-bit data words
         remainder = fcnt % 10
+        start2 = time.time()
         for i in range(1+cycles)[::-1]:  # reverses the order of the count
             #if( self.terminate == 1):
             #    return
@@ -244,6 +273,7 @@ class MMFE8:
                 reads = 10
             msgFifoData = "k 0x44A10010 " + str(reads) + "\n" # read 10 words from fifo
             fifoData = self.udp.udp_client(msgFifoData,self.UDP_IP,self.UDP_PORT)
+            print fifoData
             n = 2
             while n < m:
                 #if( self.terminate == 1):
@@ -271,10 +301,12 @@ class MMFE8:
                         myBCid = binstr.b_gray_to_bin(BCid2)
                         myIntBCid = binstr.b_to_int(myBCid)
                         fifohigh = fifohigh >> 12  # later we will get the turn number 	 
+                        fifohigh = fifohigh >> 4 # 4 bits of zeros?
+                        MMFE8num = int(fifohigh & 255) # do we need to convert this?
                     #print dataList[n+1] + " "+ dataList[n] + ", addr=" + str(addr) + \
                     #               ", amp="+str(amp) + ", time="+str(timing) + ", BCid= " + str(myIntBCid)
                     print dataList[n] + " "+ dataList[n+1] + ", addr=" + str(addr) + \
-                                   ", amp="+str(amp) + ", time="+str(timing) + ", BCid= " + str(myIntBCid) + ", VMM= " + str(vmm)
+                                   ", amp="+str(amp) + ", time="+str(timing) + ", BCid= " + str(myIntBCid) + ", VMM= " + str(vmm) + ", MMFE8= " + str(MMFE8num)
                     #with open('mmfe8Test.dat', 'a') as myfile:
                     #            myfile.write(str(int(addr))+'\t'+ str(int(amp))+'\t'+ str(int(timing))+'\t'+ str(myIntBCid) +'\n')
                     with open('mmfe8Test.dat', 'a') as myfile:
@@ -282,8 +314,45 @@ class MMFE8:
                     n=n+2
                 else:
                     print "out of order or no data ="# + str(hex(dataList[n]))
-                    #n= n+1       
-                    n=n+2 #paolo
+                    # n= n+1       
+                    n=n+2 # paolo
+        print "time to read all: ", time.time()-start2
+
+    def daq_readOut_quiet(self):
+        fifoCnt = 0
+        r=10
+#        start = time.time()
+        while ( ( fifoCnt == 0) and ( r != 0)):
+            r = r -1
+            msgFifoCnt = "r 0x44A10014 1 \0 \n" # read word count of data fifo
+            FifoCntData = self.udp.udp_client(msgFifoCnt,self.UDP_IP,self.UDP_PORT)
+            FifoCntStr = string.split(FifoCntData,' ') # split the string to a list
+            fifoCnt = int(FifoCntStr[2],16) # We now have the number of words in the FIFO
+#            print "read num words", time.time()-start
+        print "FIFOCNT ", fifoCnt
+        if fifoCnt % 2 == 0:
+            fcnt = fifoCnt
+        else:
+            print "/nlost one count"
+            fcnt = (fifoCnt - 1)
+        cycles = fcnt / 10  # reading 10 32-bit data words
+        remainder = fcnt % 10
+        start2 = time.time()
+        myfile = open('mmfe8TestQuiet.dat', 'a')
+        for i in range(1+cycles)[::-1]:  # reverses the order of the count
+            if i == 0:                             # 0 has less than ten words
+                m = 2 + remainder
+                reads = remainder  # less that 10
+            else:
+                m = 12 # total words in packet payload
+                reads = 10
+            msgFifoData = "k 0x44A10010 " + str(reads) + "\n" # read 10 words from fifo
+            fifoData = self.udp.udp_client(msgFifoData,self.UDP_IP,self.UDP_PORT)
+            print fifoData
+            if fifoData != '!Err':
+                myfile.write(self.bcid_reg + '\t' + fifoData + '\n')
+        myfile.close()
+        print "time to read all: ", time.time()-start2
 					
     def read_xadc(self, widget):
         msg = "x \0 \n"
@@ -301,8 +370,28 @@ class MMFE8:
             s = '{0:.4f}\t{1:.4f}\t{2:.4f}\t{3:.4f}\t{4:.4f}\t{5:.4f}\t{6:.4f}\t{7:.4f}\n'.format(pd[0],pd[1],pd[2],pd[3],pd[4],pd[5],pd[6],pd[7])
             with open('mmfe8-xadc.dat', 'a') as myfile:
                 myfile.write(s)  
-        return					
+        return
 
+    def send_ext_trig(self, widget):
+        print "\nSending Ext Trig"
+        # axi reg 78
+        MSGsend0 = "W 0x44A10148 0 \0\n"
+        MSGsend1 = "W 0x44A10148 1 \0\n"
+        MSGsend2 = "W 0x44A10148 0 \0\n"
+        self.udp.udp_client(MSGsend0,self.UDP_IP,self.UDP_PORT)
+        start = time.time()
+        self.udp.udp_client(MSGsend1,self.UDP_IP,self.UDP_PORT)
+#        print "Send Ext Trig Pulse Completed\n"
+        # AW 
+#        print "checking for data loop"
+        end = time.time()
+        delta = end-start
+        print "timing", delta
+        self.check_for_data()
+        self.udp.udp_client(MSGsend2,self.UDP_IP,self.UDP_PORT)
+        
+
+		
     def internal_trigger(self, widget):
         if widget.get_active():
             widget.set_label("ON")
@@ -326,10 +415,12 @@ class MMFE8:
         if widget.get_active():
             widget.set_label("ON")
             self.readout_runlength[26] = 1
+            self.ext_trig_on = 1
             #self.udp.udp_client(MSG,self.UDP_IP,self.UDP_PORT)
         else:
             widget.set_label("OFF")
             self.readout_runlength[26] = 0
+            self.ext_trig_on = 0
             #self.udp.udp_client(MSG,self.UDP_IP,self.UDP_PORT)
         tempInt = 0
         for bit in range(32):
@@ -340,6 +431,40 @@ class MMFE8:
         message = message + '\0' + '\n'
         self.udp.udp_client(message,self.UDP_IP,self.UDP_PORT)   
         return
+
+    def external_trigger_w_pulse(self, widget):
+        if widget.get_active():
+            widget.set_label("ON")
+            message = "w 0x44A1013C 1"
+            self.udp.udp_client(message,self.UDP_IP,self.UDP_PORT)
+            self.ext_trig_w_pulse = 1
+        else:
+            widget.set_label("OFF")
+            message = "w 0x44A1013C 0"
+            self.udp.udp_client(message,self.UDP_IP,self.UDP_PORT)
+            self.ext_trig_w_pulse = 0
+        return
+
+    def check_for_data_flag(self, widget):
+        '''Continuous checking for data'''
+        if widget.get_active():
+            widget.set_label("ON")
+            while self.ext_trig_on is 1: 
+                msg = "r 0x44A10144 1" # read read_data variable in FPGA
+                check_reading = self.udp.udp_client(msg,self.UDP_IP,self.UDP_PORT)
+                check_reading_str = string.split(check_reading, ' ')
+                if int(check_reading_str[2],16) is 1:
+                    bcidreg = "r 0x44A1014C 1" # read bcid_captured and external_trigger number in FPGA
+                    check_bcidreg = self.udp.udp_client(bcidreg,self.UDP_IP,self.UDP_PORT)
+                    check_bcidreg_str = string.split(check_bcidreg, ' ')
+                    self.bcid_reg = check_bcidreg_str[2]
+                    self.start(self)
+                    print "reading done!"
+        else:
+            widget.set_label("OFF")
+            print "checking off"
+        return
+
 
     def leaky_readout(self, widget):
         if widget.get_active():
@@ -451,10 +576,16 @@ class MMFE8:
         message = "w 0x44A100FC"
         message = message + ' 0x{0:X}'.format(tempInt)  
         message = message + '\0' + '\n'
-        print message
+#        print message
         self.udp.udp_client(message,self.UDP_IP,self.UDP_PORT)
-        self.daq_readOut()                   
-        sleep(1)
+#        sleep(.001) 
+#MAYBE PUT THIS BACK IN
+#        self.daq_readOut()                   
+        if self.readout_runlength[26] == 1:
+            self.daq_readOut_quiet()
+        else:
+            self.daq_readOut()                   
+#        sleep(1)
         tempInt = 0
         self.control[2] = 0
         #byteint = 0
@@ -577,6 +708,14 @@ class MMFE8:
                 #self.vmm_cfg_sel[28+i] = mmfe_ID_list[i]
                 self.vmm_cfg_sel[11-i] = mmfe_ID_list[i]
             print "MMFE8 ID= " + str(self.mmfeID)
+
+            last_three_digits = self.UDP_IP.split(".")[-1]
+            last_digit        = last_three_digits[-1]
+            last_digit_hex    = hex(int(last_digit))
+            address = "0x44A10150" 
+            message = "w %s %s" % (address, last_digit_hex)
+            print "Writing last digit of IP address (%s) to %s" % (last_digit_hex, address)
+            self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
             
     ##==============================================##
 
@@ -863,6 +1002,8 @@ class MMFE8:
         self.chnlReg = np.zeros((51), dtype=int)
         self.byteint = np.zeros((51), dtype=np.uint32)
         self.byteword = np.zeros((32), dtype=int)
+        self.ext_trig_on = 0
+        self.ext_trig_w_pulse = 0
 
         ####################################################
         ##                    GUI   
@@ -901,23 +1042,6 @@ class MMFE8:
         self.label_pulses2 = gtk.Label("999 == Continuous")
         self.label_pulses2.set_markup('<span color="purple"><b>999 == Continuous</b></span>')
         self.label_pulses2.set_justify(gtk.JUSTIFY_CENTER)
-
-        self.label_Var_DC = gtk.Label("Delay Counts")
-        self.label_Var_DC.set_markup('<span color="blue"><b> Delay Counts   </b></span>')
-        self.combo_DC = gtk.combo_box_new_text()
-        self.combo_DC.set_active(0)
-        self.combo_DC.connect("changed",self.glob_DC_value)
-        self.combo_DC.append_text("0")
-        self.combo_DC.append_text("1")
-        self.combo_DC.append_text("2")
-        self.combo_DC.append_text("3")
-        self.combo_DC.append_text("4")
-#        self.combo_DC.set_active(0)
-        self.label_DC = gtk.Label(" st")
-        self.box_DC = gtk.HBox()
-        self.box_DC.pack_start(self.label_Var_DC, expand=False)
-        self.box_DC.pack_start(self.combo_DC, expand=False)
-        self.box_DC.pack_start(self.label_DC, expand=False)
 
 
         self.label_acq_reset_count = gtk.Label("acq_rst_count")
@@ -1111,6 +1235,25 @@ class MMFE8:
         self.button_external_trigger.child.set_justify(gtk.JUSTIFY_CENTER)
         self.button_external_trigger.connect("clicked",self.external_trigger)
         self.button_external_trigger.set_size_request(-1,-1)
+
+        self.label_external_trigger_w_pulse =  gtk.Label("External Trigger W/ Pulse:    ")
+        self.label_external_trigger_w_pulse.set_markup('<span color="blue"><b>External Trigger W/ Pulse:    </b></span>')
+        self.button_external_trigger_w_pulse = gtk.ToggleButton("OFF")
+        self.button_external_trigger_w_pulse.child.set_justify(gtk.JUSTIFY_CENTER)
+        self.button_external_trigger_w_pulse.connect("clicked",self.external_trigger_w_pulse)
+        self.button_external_trigger_w_pulse.set_size_request(-1,-1)
+
+        self.label_check_for_data_flag =  gtk.Label("Check For Data Flag:    ")
+        self.label_check_for_data_flag.set_markup('<span color="blue"><b>Check For Data Flag:    </b></span>')
+        self.button_check_for_data_flag = gtk.ToggleButton("OFF")
+        self.button_check_for_data_flag.child.set_justify(gtk.JUSTIFY_CENTER)
+        self.button_check_for_data_flag.connect("clicked",self.check_for_data_flag)
+        self.button_check_for_data_flag.set_size_request(-1,-1)
+
+        self.button_ext_trig_pulse = gtk.Button("Send Ext Trig")
+        self.button_ext_trig_pulse.child.set_justify(gtk.JUSTIFY_CENTER)
+        self.button_ext_trig_pulse.connect("clicked",self.send_ext_trig)
+        self.button_ext_trig_pulse.set_size_request(-1,-1)
         
         self.label_leaky_readout =  gtk.Label("Leaky Readout Data:    ")
         self.label_leaky_readout.set_markup('<span color="blue"><b>Leaky Readout:    </b></span>')
@@ -1216,6 +1359,14 @@ class MMFE8:
         self.box_external_trigger.pack_start(self.label_external_trigger,expand=False) #
         self.box_external_trigger.pack_start(self.button_external_trigger,expand=True)
 
+        self.box_external_trigger_w_pulse = gtk.HBox()
+        self.box_external_trigger_w_pulse.pack_start(self.label_external_trigger_w_pulse,expand=False) #
+        self.box_external_trigger_w_pulse.pack_start(self.button_external_trigger_w_pulse,expand=True)
+
+        self.box_check_for_data_flag = gtk.HBox()
+        self.box_check_for_data_flag.pack_start(self.label_check_for_data_flag,expand=False) #
+        self.box_check_for_data_flag.pack_start(self.button_check_for_data_flag,expand=True)
+
         self.box_leaky_readout = gtk.HBox()
         self.box_leaky_readout.pack_start(self.label_leaky_readout,expand=False) #
         self.box_leaky_readout.pack_start(self.button_leaky_readout,expand=True)
@@ -1266,9 +1417,10 @@ class MMFE8:
         self.box_buttons.pack_start(self.label_Space22,expand=True)
         self.box_buttons.pack_start(self.box_internal_trigger,expand=False)
         self.box_buttons.pack_start(self.box_external_trigger,expand=False)
+        self.box_buttons.pack_start(self.box_external_trigger_w_pulse,expand=False)
+        self.box_buttons.pack_start(self.box_check_for_data_flag,expand=False)
         self.box_buttons.pack_start(self.box_leaky_readout,expand=False)
         self.box_buttons.pack_start(self.box_pulses,expand=False)        
-        self.box_buttons.pack_start(self.box_DC,expand=False)        
         self.box_buttons.pack_start(self.label_pulses2,expand=False)
         self.box_buttons.pack_start(self.box_acq_reset_count,expand=False)        
         self.box_buttons.pack_start(self.label_acq_reset_count2,expand=False)
@@ -1282,6 +1434,7 @@ class MMFE8:
         self.box_buttons.pack_start(self.label_But_Space4,expand=True)
         # self.box_buttons.pack_start(self.button_read_config_VMM_reg,expand=False)
         self.box_buttons.pack_start(self.button_read_XADC,expand=False)
+        self.box_buttons.pack_start(self.button_ext_trig_pulse,expand=False)
         self.box_buttons.pack_start(self.label_But_Space5,expand=True)
         self.box_buttons.pack_start(self.button_exit,expand=False)                       
         self.box_buttons.pack_start(self.label_But_Space2,expand=True)

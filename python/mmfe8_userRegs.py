@@ -232,6 +232,29 @@ class userRegs:
             print "Unexpected Error Writing to Ctrl Reg 63:\n", sys.exc_info()[0]
             self.on_erro(widget, "Unexpected Error:\nDetails printed to shell.")
 
+    def write_button_RegN_callback(self, widget, textBox0, textBox1):
+        try:
+            addr  = textBox0.get_text()
+            entry = textBox1.get_text()
+            if int(entry, base=16) > int("0xffffffff", base=16):
+                myMsg = "a ValueError exception occurred\nReg Value > 0xFFFFFFFF."
+                self.on_erro(widget, myMsg)
+            else:    
+                MESSAGE = "w " + str(addr) + " " + str(entry) + '\0' + '\n'
+                print "Wrote", entry, "to User Defined Reg", addr
+                data = self.udp.udp_client(MESSAGE, self.UDP_IP, self.UDP_PORT)
+                myData = string.split(data,'\n')
+                #textBox.set_text(myData[2])
+        except IOError as e:
+            myMsg = "I/O Error:  {1}".format(e.errno, e.strerror)
+            self.on_erro(widget, myMsg)
+        except ValueError:
+            myMsg = "a ValueError exception occurred\nCtrl Reg 63 Value not hexadecimal."
+            self.on_erro(widget, myMsg)
+        except:
+            print "Unexpected Error Writing to Ctrl Reg 63:\n", sys.exc_info()[0]
+            self.on_erro(widget, "Unexpected Error:\nDetails printed to shell.")
+
 
     #==========================  READ BUTTONS  ===========================   
     def read_button_statusReg1_callback(self, widget, textBox):
@@ -259,7 +282,7 @@ class userRegs:
         except:
             print "Unexpected Errohw.getNoder Reading Status Reg 1:\n", sys.exc_info()[0]
             self.on_erro(widget, "Unexpected Error:\nDetails printed to shell.")
-         """       
+        " """       
 
 
 # Reg 1 Read
@@ -325,7 +348,8 @@ class userRegs:
 # Reg 5 Read
     def read_button_Reg5_callback(self, widget, textBox):
         try:
-            MSG = "r 0x44A10114 1\n"
+            MSG = "r 0x44A1014C 1\n"
+#            MSG = "r 0x44A10114 1\n"
             data = self.udp.udp_client(MSG,self.UDP_IP,self.UDP_PORT)
             myData = string.split(data,' ')
             textBox.set_text(myData[2])        
@@ -335,6 +359,23 @@ class userRegs:
             self.on_erro(widget, myMsg)
         except:
             print "Unexpected Error Reading Reg 5:\n", sys.exc_info()[0]
+            self.on_erro(widget, "Unexpected Error:\nDetails printed to shell.")
+
+# Reg N Read
+    def read_button_RegN_callback(self, widget, textBox0, textBox1):
+        try:
+            addr  = textBox0.get_text()
+            print addr
+            MESSAGE = "r " + str(addr) + " " + '1' + '\n'
+            print "Read to User Defined Reg", addr
+            data = self.udp.udp_client(MESSAGE, self.UDP_IP, self.UDP_PORT)
+            myData = string.split(data,' ')
+            textBox1.set_text(myData[2])
+        except IOError as e:
+            myMsg = "I/O Error:  {1}".format(e.errno, e.strerror)
+            self.on_erro(widget, myMsg)
+        except:
+            print "Unexpected Error Reading to Reg N:\n", sys.exc_info()[0]
             self.on_erro(widget, "Unexpected Error:\nDetails printed to shell.")
 
 
@@ -401,6 +442,12 @@ class userRegs:
         self.write_entry_Reg5 = gtk.Entry(max=10)
         self.write_entry_Reg5.set_text("0")
 
+        self.write_entry_RegN = gtk.Entry(max=10)
+        self.write_entry_RegN.set_text("0")
+
+        self.write_addr_RegN = gtk.Entry(max=10)
+        self.write_addr_RegN.set_text("0x44A1xxxx")
+
 
         ### the following have been set to read only
         self.read_entry_statusReg1 = gtk.Entry()
@@ -427,6 +474,13 @@ class userRegs:
         self.read_entry_Reg5.set_text("")
         self.read_entry_Reg5.set_editable(False)
 
+        self.read_entry_RegN = gtk.Entry(max=10)
+        self.read_entry_RegN.set_text("")
+        self.read_entry_Reg5.set_editable(False)
+
+        self.read_addr_RegN = gtk.Entry(max=10)
+        self.read_addr_RegN.set_text("0x44A1xxxx")
+
 
         ### page 9 buttons ###
         
@@ -437,7 +491,7 @@ class userRegs:
         self.write_button_Reg3 = gtk.Button("WRITE Reg 3\n0x44A1010C")
         self.write_button_Reg4 = gtk.Button("WRITE Reg 4\n0x44A10110")
         self.write_button_Reg5 = gtk.Button("WRITE Reg 5\n0x44A10114")
-
+        self.write_button_RegN = gtk.Button("WRITE Reg N")
 
         self.write_button_statusReg1.child.set_justify(gtk.JUSTIFY_CENTER)
         self.write_button_Reg1.child.set_justify(gtk.JUSTIFY_CENTER)
@@ -445,6 +499,7 @@ class userRegs:
         self.write_button_Reg3.child.set_justify(gtk.JUSTIFY_CENTER)
         self.write_button_Reg4.child.set_justify(gtk.JUSTIFY_CENTER)
         self.write_button_Reg5.child.set_justify(gtk.JUSTIFY_CENTER)
+        self.write_button_RegN.child.set_justify(gtk.JUSTIFY_CENTER)
 
         self.write_button_statusReg1.set_size_request(100,45)
         self.write_button_Reg1.set_size_request(100,45)
@@ -452,6 +507,7 @@ class userRegs:
         self.write_button_Reg3.set_size_request(100,45)
         self.write_button_Reg4.set_size_request(100,45)
         self.write_button_Reg5.set_size_request(100,45)
+        self.write_button_RegN.set_size_request(100,45)
 
         self.write_button_statusReg1.connect("clicked", self.write_button_statusReg1_callback,self.write_entry_statusReg1)
         self.write_button_Reg1.connect("clicked", self.write_button_Reg1_callback, self.write_entry_Reg1)
@@ -459,13 +515,15 @@ class userRegs:
         self.write_button_Reg3.connect("clicked", self.write_button_Reg3_callback, self.write_entry_Reg3)
         self.write_button_Reg4.connect("clicked", self.write_button_Reg4_callback, self.write_entry_Reg4)
         self.write_button_Reg5.connect("clicked", self.write_button_Reg5_callback, self.write_entry_Reg5)
+        self.write_button_RegN.connect("clicked", self.write_button_RegN_callback, self.write_addr_RegN, self.write_entry_RegN)
 
         self.read_button_statusReg1 = gtk.Button("READ\nAxi_Reg_0")
         self.read_button_Reg1 = gtk.Button("READ Reg 1\nAxi_Reg_61")
         self.read_button_Reg2 = gtk.Button("READ Reg 2\nAxi_Reg_62")
         self.read_button_Reg3 = gtk.Button("READ Reg 3\nAxi_Reg_63")
         self.read_button_Reg4 = gtk.Button("READ Reg 4\nAxi_Reg_64")
-        self.read_button_Reg5 = gtk.Button("READ Reg 5\nAxi_Reg_65")
+        self.read_button_Reg5 = gtk.Button("READ Reg 5\nAxi_Reg_79")
+        self.read_button_RegN = gtk.Button("READ Reg N\nAxi_Reg_N")
 
         self.read_button_statusReg1.child.set_justify(gtk.JUSTIFY_CENTER)
         self.read_button_Reg1.child.set_justify(gtk.JUSTIFY_CENTER)
@@ -473,6 +531,7 @@ class userRegs:
         self.read_button_Reg3.child.set_justify(gtk.JUSTIFY_CENTER)
         self.read_button_Reg4.child.set_justify(gtk.JUSTIFY_CENTER)
         self.read_button_Reg5.child.set_justify(gtk.JUSTIFY_CENTER)
+        self.read_button_RegN.child.set_justify(gtk.JUSTIFY_CENTER)
 
         self.read_button_statusReg1.set_size_request(100,45)
         self.read_button_Reg1.set_size_request(100,45)
@@ -480,6 +539,7 @@ class userRegs:
         self.read_button_Reg3.set_size_request(100,45)
         self.read_button_Reg4.set_size_request(100,45)
         self.read_button_Reg5.set_size_request(100,45)
+        self.read_button_RegN.set_size_request(100,45)
  
         self.read_button_statusReg1.connect("clicked", self.read_button_statusReg1_callback, self.read_entry_statusReg1) 
         self.read_button_Reg1.connect("clicked", self.read_button_Reg1_callback, self.read_entry_Reg1)
@@ -487,6 +547,7 @@ class userRegs:
         self.read_button_Reg3.connect("clicked", self.read_button_Reg3_callback, self.read_entry_Reg3)
         self.read_button_Reg4.connect("clicked", self.read_button_Reg4_callback, self.read_entry_Reg4)
         self.read_button_Reg5.connect("clicked", self.read_button_Reg5_callback, self.read_entry_Reg5)
+        self.read_button_RegN.connect("clicked", self.read_button_RegN_callback, self.read_addr_RegN, self.read_entry_RegN)
 
 
         ### pack user defined register boxes ###
@@ -500,24 +561,30 @@ class userRegs:
         self.table.attach(self.write_button_Reg3, left_attach=3, right_attach=4, top_attach=4, bottom_attach=5, xpadding=10, ypadding=20)
         self.table.attach(self.write_button_Reg4, left_attach=3, right_attach=4, top_attach=5, bottom_attach=6, xpadding=10, ypadding=20)
         self.table.attach(self.write_button_Reg5, left_attach=3, right_attach=4, top_attach=6, bottom_attach=7, xpadding=10, ypadding=20)
+        self.table.attach(self.write_button_RegN, left_attach=3, right_attach=4, top_attach=7, bottom_attach=8, xpadding=10, ypadding=20)
         self.table.attach(self.write_entry_statusReg1, left_attach=4, right_attach=5, top_attach=1, bottom_attach=2, xpadding=60, ypadding=20)
         self.table.attach(self.write_entry_Reg1, left_attach=4, right_attach=5, top_attach=2, bottom_attach=3, xpadding=60, ypadding=20)
         self.table.attach(self.write_entry_Reg2, left_attach=4, right_attach=5, top_attach=3, bottom_attach=4, xpadding=60, ypadding=20)
         self.table.attach(self.write_entry_Reg3, left_attach=4, right_attach=5, top_attach=4, bottom_attach=5, xpadding=60, ypadding=20)
         self.table.attach(self.write_entry_Reg4, left_attach=4, right_attach=5, top_attach=5, bottom_attach=6, xpadding=60, ypadding=20)
         self.table.attach(self.write_entry_Reg5, left_attach=4, right_attach=5, top_attach=6, bottom_attach=7, xpadding=60, ypadding=20)
+        self.table.attach(self.write_addr_RegN,  left_attach=4, right_attach=5, top_attach=7, bottom_attach=8, xpadding=60, ypadding=0)
+        self.table.attach(self.write_entry_RegN, left_attach=4, right_attach=5, top_attach=8, bottom_attach=9, xpadding=60, ypadding=0)
         self.table.attach(self.read_button_statusReg1, left_attach=5, right_attach=6, top_attach=1, bottom_attach=2, xpadding=20, ypadding=20)
         self.table.attach(self.read_button_Reg1, left_attach=5, right_attach=6, top_attach=2, bottom_attach=3, xpadding=20, ypadding=20)
         self.table.attach(self.read_button_Reg2, left_attach=5, right_attach=6, top_attach=3, bottom_attach=4, xpadding=20, ypadding=20)
         self.table.attach(self.read_button_Reg3, left_attach=5, right_attach=6, top_attach=4, bottom_attach=5, xpadding=20, ypadding=20)
         self.table.attach(self.read_button_Reg4, left_attach=5, right_attach=6, top_attach=5, bottom_attach=6, xpadding=20, ypadding=20)
         self.table.attach(self.read_button_Reg5, left_attach=5, right_attach=6, top_attach=6, bottom_attach=7, xpadding=20, ypadding=20)
+        self.table.attach(self.read_button_RegN, left_attach=5, right_attach=6, top_attach=7, bottom_attach=8, xpadding=20, ypadding=20)
         self.table.attach(self.read_entry_statusReg1, left_attach=6, right_attach=7, top_attach=1, bottom_attach=2, xpadding=60, ypadding=20)
         self.table.attach(self.read_entry_Reg1, left_attach=6, right_attach=7, top_attach=2, bottom_attach=3, xpadding=60, ypadding=20)
         self.table.attach(self.read_entry_Reg2, left_attach=6, right_attach=7, top_attach=3, bottom_attach=4, xpadding=60, ypadding=20)
         self.table.attach(self.read_entry_Reg3, left_attach=6, right_attach=7, top_attach=4, bottom_attach=5, xpadding=60, ypadding=20)
         self.table.attach(self.read_entry_Reg4, left_attach=6, right_attach=7, top_attach=5, bottom_attach=6, xpadding=60, ypadding=20)
         self.table.attach(self.read_entry_Reg5, left_attach=6, right_attach=7, top_attach=6, bottom_attach=7, xpadding=60, ypadding=20)
+        self.table.attach(self.read_entry_RegN, left_attach=6, right_attach=7, top_attach=7, bottom_attach=8, xpadding=60, ypadding=20)
+        self.table.attach(self.read_addr_RegN, left_attach=6, right_attach=7, top_attach=8, bottom_attach=9, xpadding=60, ypadding=20)
 
         self.userRegs_box.pack_start(self.top)
         self.userRegs_box.pack_start(self.table, fill=False)
