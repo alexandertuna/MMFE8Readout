@@ -53,6 +53,7 @@ class data_acq:
     def check_first_board_flag(self):
         while reading is 1:
             firstboard = MMFEs[0]
+            print "shit"
             ready = firstboard.check_for_data_flag()
             if ready is 1:
                 ind = 0
@@ -87,6 +88,7 @@ if __name__=="__main__":
         threads.append(thr.Thread(target=data_take.check_first_board_flag))
     starting = raw_input("To start data taking, enter 1")
     if starting is "1":
+        reading = 1
         for thread in threads:
             thread.start()
     user_input = raw_input("To stop data taking, enter 0")
