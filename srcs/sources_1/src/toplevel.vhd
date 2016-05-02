@@ -711,7 +711,12 @@ architecture STRUCTURE of toplevel is
     signal vmm_ena_en  : std_logic;
     signal vmm_ena_R   : std_logic;
 
+    signal vmm_data0_sync_vec : std_logic_vector (7 downto 0) := (others => '0');
+    signal vmm_data0_async_vec : std_logic_vector (7 downto 0) := (others => '0');
     signal vmm_data0_vec : std_logic_vector (7 downto 0) := (others => '0');
+
+    signal vmm_data1_sync_vec : std_logic_vector (7 downto 0) := (others => '0');
+    signal vmm_data1_async_vec : std_logic_vector (7 downto 0) := (others => '0');
     signal vmm_data1_vec : std_logic_vector (7 downto 0) := (others => '0');
 
     signal fifo_wr_en_i : std_logic;
@@ -2294,29 +2299,38 @@ begin
 -----------------------------
 
 
+  data0_diff_1 : IBUFDS port map (O => vmm_data0_async_vec(0), I => DATA0_1_P, IB => DATA0_1_N);
+  data0_diff_2 : IBUFDS port map (O => vmm_data0_async_vec(1), I => DATA0_2_P, IB => DATA0_2_N);
+  data0_diff_3 : IBUFDS port map (O => vmm_data0_async_vec(2), I => DATA0_3_P, IB => DATA0_3_N);
+  data0_diff_4 : IBUFDS port map (O => vmm_data0_async_vec(3), I => DATA0_4_P, IB => DATA0_4_N);
+  data0_diff_5 : IBUFDS port map (O => vmm_data0_async_vec(4), I => DATA0_5_P, IB => DATA0_5_N);
+  data0_diff_6 : IBUFDS port map (O => vmm_data0_async_vec(5), I => DATA0_6_P, IB => DATA0_6_N);
+  data0_diff_7 : IBUFDS port map (O => vmm_data0_async_vec(6), I => DATA0_7_P, IB => DATA0_7_N);
+  data0_diff_8 : IBUFDS port map (O => vmm_data0_async_vec(7), I => DATA0_8_P, IB => DATA0_8_N);
 
 
-    data0_diff_1 : IBUFDS port map (O => vmm_data0_vec(0), I => DATA0_1_P, IB => DATA0_1_N);
-    data0_diff_2 : IBUFDS port map (O => vmm_data0_vec(1), I => DATA0_2_P, IB => DATA0_2_N);
-    data0_diff_3 : IBUFDS port map (O => vmm_data0_vec(2), I => DATA0_3_P, IB => DATA0_3_N);
-    data0_diff_4 : IBUFDS port map (O => vmm_data0_vec(3), I => DATA0_4_P, IB => DATA0_4_N);
-    data0_diff_5 : IBUFDS port map (O => vmm_data0_vec(4), I => DATA0_5_P, IB => DATA0_5_N);
-    data0_diff_6 : IBUFDS port map (O => vmm_data0_vec(5), I => DATA0_6_P, IB => DATA0_6_N);
-    data0_diff_7 : IBUFDS port map (O => vmm_data0_vec(6), I => DATA0_7_P, IB => DATA0_7_N);
-    data0_diff_8 : IBUFDS port map (O => vmm_data0_vec(7), I => DATA0_8_P, IB => DATA0_8_N);
+  data1_diff_1 : IBUFDS port map (O => vmm_data1_async_vec(0), I => DATA1_1_P, IB => DATA1_1_N);
+  data1_diff_2 : IBUFDS port map (O => vmm_data1_async_vec(1), I => DATA1_2_P, IB => DATA1_2_N);
+  data1_diff_3 : IBUFDS port map (O => vmm_data1_async_vec(2), I => DATA1_3_P, IB => DATA1_3_N);
+  data1_diff_4 : IBUFDS port map (O => vmm_data1_async_vec(3), I => DATA1_4_P, IB => DATA1_4_N);
+  data1_diff_5 : IBUFDS port map (O => vmm_data1_async_vec(4), I => DATA1_5_P, IB => DATA1_5_N);
+  data1_diff_6 : IBUFDS port map (O => vmm_data1_async_vec(5), I => DATA1_6_P, IB => DATA1_6_N);
+  data1_diff_7 : IBUFDS port map (O => vmm_data1_async_vec(6), I => DATA1_7_P, IB => DATA1_7_N);
+  data1_diff_8 : IBUFDS port map (O => vmm_data1_async_vec(7), I => DATA1_8_P, IB => DATA1_8_N);
 
-
-    data1_diff_1 : IBUFDS port map (O => vmm_data1_vec(0), I => DATA1_1_P, IB => DATA1_1_N);
-    data1_diff_2 : IBUFDS port map (O => vmm_data1_vec(1), I => DATA1_2_P, IB => DATA1_2_N);
-    data1_diff_3 : IBUFDS port map (O => vmm_data1_vec(2), I => DATA1_3_P, IB => DATA1_3_N);
-    data1_diff_4 : IBUFDS port map (O => vmm_data1_vec(3), I => DATA1_4_P, IB => DATA1_4_N);
-    data1_diff_5 : IBUFDS port map (O => vmm_data1_vec(4), I => DATA1_5_P, IB => DATA1_5_N);
-    data1_diff_6 : IBUFDS port map (O => vmm_data1_vec(5), I => DATA1_6_P, IB => DATA1_6_N);
-    data1_diff_7 : IBUFDS port map (O => vmm_data1_vec(6), I => DATA1_7_P, IB => DATA1_7_N);
-    data1_diff_8 : IBUFDS port map (O => vmm_data1_vec(7), I => DATA1_8_P, IB => DATA1_8_N);
-
-
-
+  --synchronizing data0 and data1 inputs to clk_200
+  
+  sync_data: process (clk_200)
+  begin  -- process sync_data0
+    if rising_edge(clk_200) then
+      for I in 0 to 7 loop
+        vmm_data0_sync_vec(I) <= vmm_data0_async_vec(I);
+        vmm_data0_vec(I) <= vmm_data0_sync_vec(I);
+        vmm_data1_sync_vec(I) <= vmm_data1_async_vec(I);
+        vmm_data1_vec(I) <= vmm_data1_sync_vec(I);
+      end loop;  -- I
+    end if;
+  end process sync_data;
 
 ------------------
 --CKDT I/O
