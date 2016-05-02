@@ -155,28 +155,31 @@ class MMFE:
 
     def check_for_data(self):
         counter = 0
-        while self.ext_trig_on == 1:
+        print "hi", self.ext_trig_on
+        while self.ext_trig_on==1:
             counter = counter + 1
             start = time.time()
             check_reading = self.udp.udp_client("r 0x44A10144 1", self.UDP_IP, self.UDP_PORT)
-            print check_reading
             if not check_reading:
                 print "UDP communication failed in check_for_data, exiting on counter %i" % (counter)
                 return
+            print "time chkpt: ",time.time()-start
             check_reading_str = check_reading.split()
             if counter == 200:
                 print "done reading, maybe no data?"
                 break
             if int(check_reading_str[2], 16) is 1:
-                print "read_data register is up!"
-                self.daq_readOut()
-                reading_done = self.udp.udp_client("W 0x44A10140 1", self.UDP_IP, self.UDP_PORT) # write to other register that it is done
-                print reading_done
+                bcidreg = "r 0x44A1014C 1" # read bcid_captured and external_trigger number in FPGA       
+                check_bcidreg = self.udp.udp_client(bcidreg,self.UDP_IP,self.UDP_PORT)
+                check_bcidreg_str = check_bcidreg.split()
+                self.bcid_reg = check_bcidreg_str[2]
+#                print "read_data register is up!"
+#                sleep(.002)
                 end = time.time()
-                print "reading timing: "
-                print end - start
-                time.sleep(.001)
-                reading_reset = self.udp.udp_client("W 0x44A10140 0", self.UDP_IP, self.UDP_PORT) # put flag back low
+                delta = end-start
+                print "timing for check for data before start: ", delta
+                self.start()
+#                self.daq_readOut()
                 break
         return
 
@@ -185,14 +188,15 @@ class MMFE:
         fifo_count = 0
         attempts   = 10
         while fifo_count == 0 and attempts > 0:
+            print "trying"
             attempts -= 1
             message = "r 0x44A10014 1" # word count of data fifo
             data = self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
+            print data
             if data != None:
                 data_list  = data.split(" ")
                 fifo_count = int(data_list[2], 16)
-            time.sleep(1)
-
+            #time.sleep(1)
         print "FIFOCNT ", fifo_count
         if data == None or fifo_count == 0:
             print "Warning: Did not receive data. Stop readout."
@@ -204,51 +208,27 @@ class MMFE:
             print "Warning: Lost one count in fifo reading."
             fifo_count -= 1
 
+        bcidreg = "r 0x44A1014C 1" # read bcid_captured and external_trigger number in FPGA       
+        check_bcidreg = self.udp.udp_client(bcidreg,self.UDP_IP,self.UDP_PORT)
+        check_bcidreg_str = check_bcidreg.split()
+        print check_bcidreg_str
+#        word2 = int(check_bcidreg_str[2],   16)
+        self.bcid_reg = check_bcidreg_str[2]
+
         peeks_per_cycle = 10
         cycles    = fifo_count / peeks_per_cycle
         remainder = fifo_count % peeks_per_cycle
+
+        myfile = open('mmfe8TestQuiet.dat', 'a')
 
         for cycle in reversed(xrange(1+cycles)):
             
             peeks     = peeks_per_cycle if cycle > 0 else remainder
             message   = "k 0x44A10010 %s" % (peeks)
             data      = self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
-            data_list = data.split()
 
-            for iword in xrange(2, peeks+1, 2):
-
-                word0 = int(data_list[iword],   16)
-                word1 = int(data_list[iword+1], 16)
-
-                if not word0 > 0:
-                    print "Out of order or no data."
-                    continue
-
-                word0 = word0 >> 2       # get rid of first 2 bits (threshold)
-                addr  = (word0 & 63) + 1 # get channel number as on GUI
-                word0 = word0 >> 6       # get rid of address
-                amp   = word0 & 1023     # get amplitude
-
-                word0  = word0 >> 10     # ?
-                timing = word0 & 255     # 
-                word0  = word0 >> 8      # we will later check for vmm number
-                vmm    = word0 &  7      # get vmm number
-
-                bcid_gray = int(word1 & 4095)
-                bcid_bin  = binstr.b_gray_to_bin(binstr.int_to_b(bcid_gray, 16))
-                bcid_int  = binstr.b_to_int(bcid_bin)
-
-                word1 = word1 >> 12      # later we will get the turn number   
-                word1 = word1 >> 4       # 4 bits of zeros?
-                immfe = int(word1 & 255) # do we need to convert this?
-
-                to_print = "word0 = %s word1 = %s addr = %s amp = %s time = %s bcid = %s vmm = %s mmfe = %s"
-                print to_print % (data_list[iword], data_list[iword+1],
-                                  str(addr),     str(amp), str(timing), 
-                                  str(bcid_int), str(vmm), str(immfe))
-
-                with open('mmfe8Test.dat', 'a') as myfile:
-                    myfile.write(str(int(addr))+'\t'+ str(int(amp))+'\t'+ str(int(timing))+'\t'+ str(bcid_int) +'\t'+ str(vmm) +'\n')
+            if data != '!Err!':
+                myfile.write(self.bcid_reg + '\t' + data +'\n')
 
     def read_xadc(self, widget):
         message = "x"
@@ -262,14 +242,19 @@ class MMFE:
                 myfile.write(s)  
 
     def send_external_trig(self, widget):
-        print "Sending Ext Trig"
-        for trig in [0, 1, 0]:
-            message = "w 0x44A10148 %i" % (trig)
-            self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
-            time.sleep(trig)
+#        print "Sending Ext Trig"
+        start = time.time()
+        message = "w 0x44A10148 0"
+        self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
+        message = "w 0x44A10148 1"
+        self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
+#            time.sleep(trig)
         print "Send Ext Trig Pulse Completed"
+        print "timing", time.time()-start
         self.check_for_data()
-                
+        message = "w 0x44A10148 0"
+        self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
+
     def leaky_readout(self, widget):
         self.readout_runlength[25] = 1 if widget.get_active() else 0
         self.write_readout_runlength()
@@ -281,6 +266,7 @@ class MMFE:
     def external_trigger(self, widget):
         self.readout_runlength[26] = 1 if widget.get_active() else 0
         self.ext_trig_on = self.readout_runlength[26]
+        print "self_ext_trig_on", self.ext_trig_on
         self.write_readout_runlength()
 
     def set_pulses(self, widget, entry=None):
@@ -305,12 +291,12 @@ class MMFE:
         self.acq_reset_hold = value
         self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
 
-    def start(self, widget):
+    def start(self):
         self.control[2] = 1
         self.write_control()
 
         self.daq_readOut()                   
-        time.sleep(1)
+        #time.sleep(1)
 
         self.control[2] = 0
         self.write_control()

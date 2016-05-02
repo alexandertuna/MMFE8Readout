@@ -53,13 +53,13 @@ class data_acq:
     def check_first_board_flag(self):
         while reading is 1:
             firstboard = MMFEs[0]
-            print "shit"
             ready = firstboard.check_for_data_flag()
             if ready is 1:
                 ind = 0
-                for board in MMFes:
+                for board in MMFEs:
+                    board.start(ind)
                     board.daq_readOut_quiet(ind)
-                    ind = ind + 1
+#                    ind = ind + 1
         print "done reading!\n"
         
     def thread1(self):
@@ -83,6 +83,8 @@ if __name__=="__main__":
     data_take.set_ip()
 
     #checking for data
+
+    print "TO USE THIS, MAKE SURE TIME FOR TRIGGER DATA IS SET CORRECTLY\n"
     for board in MMFEs:
         #threads.append(thr.Thread(target=data_take.thread1)) #this is a test thread function
         threads.append(thr.Thread(target=data_take.check_first_board_flag))

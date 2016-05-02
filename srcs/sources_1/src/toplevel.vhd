@@ -1474,15 +1474,12 @@ begin
     U_cktp_gen : process(clk_100, reset)
     begin
         if rising_edge(clk_100) then
-            if ((reset = '1' or ext_trigger_edge= '1') and (ext_trigger_in_sel = '1')) then --
-              -- reset=1 or (                           and         ) should be
-              -- paolo 
---            if (int_trig_edge = '1' or  reset = '1') then
+            if ((reset = '1' or ext_trigger_edge= '1') and (ext_trigger_in_sel = '1') and (ext_trig_w_pulse = '1')) then --
                 clk_tp_cntr <= clk_tp_period_cnt;
                 clk_tp_out  <= '0';
                 cktp_done   <= '0';
             else
-                if ((ext_trigger_sim = '1') and (ext_trigger_in_sel = '1') and (vmm_cktp_en = '1') and (cktp_done = '0') and (ext_trig_w_pulse = '1')) then
+                if ((ext_trigger_port = '1') and (ext_trigger_in_sel = '1') and (vmm_cktp_en = '1') and (cktp_done = '0') and (ext_trig_w_pulse = '1')) then
                     if clk_tp_cntr = clk_tp_period_cnt then
                         clk_tp_cntr <= (others => '0');
                         clk_tp_out  <= '1';
@@ -1702,29 +1699,29 @@ begin
       reading_fin_flag_edge <= ((not reading_fin_flag_d) and reading_fin_flag);
     end process reading_fin_edge_detect;
 
-    ext_trig_edge_detect : process(clk_100, ext_trigger_sim, ext_trigger_d)
+    ext_trig_edge_detect : process(clk_100, ext_trigger_port, ext_trigger_d)
     begin
     --rising edge detect
       if rising_edge(clk_100) then
-        ext_trigger_d <= ext_trigger_sim;
+        ext_trigger_d <= ext_trigger_port;
       end if;
-      ext_trigger_edge <= (not(ext_trigger_d) and ext_trigger_sim);
+      ext_trigger_edge <= (not(ext_trigger_d) and ext_trigger_port);
     end process ext_trig_edge_detect;
 
-    ext_trig_edge_detect_slow : process(clk_40, ext_trigger_sim, ext_trigger_d_slow)
+    ext_trig_edge_detect_slow : process(clk_40, ext_trigger_port, ext_trigger_d_slow)
     begin
     --should sustain ext_trigger_edge_slow for 50 ns after cktp_done = '1'
       if rising_edge(clk_40) then
-            ext_trigger_d_slow <= ext_trigger_sim;     
+            ext_trigger_d_slow <= ext_trigger_port;     
       end if;
-      ext_trigger_edge_slow <= (not(ext_trigger_d_slow) and ext_trigger_sim);
+      ext_trigger_edge_slow <= (not(ext_trigger_d_slow) and ext_trigger_port);
     end process ext_trig_edge_detect_slow;
     
-    ext_trig_gate : process(clk_40, ext_trigger_sim)
+    ext_trig_gate : process(clk_40, ext_trigger_port)
     begin
     --rising edge detect
       if rising_edge(clk_40) then
-            ext_trigger_sync <= ext_trigger_sim;     
+            ext_trigger_sync <= ext_trigger_port;     
       end if;
     end process ext_trig_gate;
     
@@ -1733,9 +1730,7 @@ begin
     begin
       if rising_edge(clk_40) then
         if ext_trigger_in_sel = '1' then
---          if ext_trigger_sim = '1' then
---          if ext_trigger_edge_slow = '1' and cktp_done = '1' then
-          if ext_trigger_sim = '1' and cktp_done = '1' then
+          if ext_trigger_port = '1' and cktp_done = '1' then
             ext_trigger_flag <= '1';
             ext_trigger_delayed <= ext_trigger_flag;
           else
@@ -1743,8 +1738,6 @@ begin
             ext_trigger_delayed <= '0';
           end if;
         else
---          ext_trigger_sim <= '0';
---            ext_trigger_in_sw <= clk_ets_out;
           ext_trigger_flag <= '0';
         end if;
       end if;

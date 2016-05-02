@@ -83,7 +83,7 @@ class MMFE:
         msg = "r 0x44A10144 1" # read read_data variable in FPGA
         check_reading = self.udp.udp_client(msg, self.UDP_IP, self.UDP_PORT)
         check_reading_str = check_reading.split()
-        print check_reading_str #comment this out later!
+#        print check_reading_str #comment this out later!
         if int(check_reading_str[2],16) is 1:
             return 1
         else: 
@@ -93,11 +93,6 @@ class MMFE:
         data       = None
         fifo_count = 0
         attempts   = 10
-
-        bcidreg = "r 0x44A1014C 1" # read bcid_captured and external_trigger number in FPGA                              
-        check_bcidreg = self.udp.udp_client(bcidreg,self.UDP_IP,self.UDP_PORT)
-        check_bcidreg_str = check_bcidreg.split()
-        self.bcid_reg = check_bcidreg_str[2]
 
         while fifo_count == 0 and attempts > 0:
             attempts -= 1
@@ -119,10 +114,17 @@ class MMFE:
             print "Warning: Lost one count in fifo reading."
             fifo_count -= 1
 
+        bcidreg = "r 0x44A1014C 1" # read bcid_captured and external_trigger number in FPGA                              
+        check_bcidreg = self.udp.udp_client(bcidreg,self.UDP_IP,self.UDP_PORT)
+        check_bcidreg_str = check_bcidreg.split()
+        self.bcid_reg = check_bcidreg_str[2]
+
         peeks_per_cycle = 10
         cycles    = fifo_count / peeks_per_cycle
         remainder = fifo_count % peeks_per_cycle
+
         myfile = open('mmfe8TestQuiet_%i.dat' %(board_id), 'a')
+
         for cycle in reversed(xrange(1+cycles)):
             
             peeks     = peeks_per_cycle if cycle > 0 else remainder
@@ -130,7 +132,7 @@ class MMFE:
             data      = self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
 
             if data != '!Err!':
-                myfile.write(self.bcid_reg, '\t' + data + '\n')            
+                myfile.write(self.bcid_reg + '\t' + data + '\n')            
                 #data_list = data.split()                
         myfile.close()
 
@@ -149,14 +151,14 @@ class MMFE:
         self.ext_trig_on = self.readout_runlength[26]
         self.write_readout_runlength()
 
-    def start(self):
+    def start(self, board_id):
         self.control[2] = 1
         self.write_control()
 
         if self.ext_trig_on is 0:
             print "turn on ext trig!!"
         else:
-            self.daq_readOut_quiet()
+            self.daq_readOut_quiet(board_id)
         #time.sleep(1)
 
         self.control[2] = 0

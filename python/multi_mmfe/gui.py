@@ -782,11 +782,11 @@ class GUI:
 
     def start(self, widget):
         for mmfe in self.current_MMFEs():
-            mmfe.start(widget)
+            mmfe.start()
 
     def start_all(self, widget):
         for mmfe in self.MMFEs:
-            mmfe.start(widget)
+            mmfe.start()
 
     def vmm_load_readout(self, widget):
         for mmfe in self.current_MMFEs():
