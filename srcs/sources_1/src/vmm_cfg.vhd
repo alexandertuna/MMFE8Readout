@@ -118,6 +118,7 @@ entity vmm_cfg is
       acq_rst_hold_term_count : in  std_logic_vector(31 downto 0) := x"00080000";  -- 40 @ 40MHz @ 200MHz
 
       acq_rst_from_data0_o : out std_logic_vector(7 downto 0);
+      acq_rst_from_tp : in std_logic;
 --    vmm_acq_rst_running         : out std_logic_vector( 7 downto 0);
 --    acq_rst_term_count          : out array_8x32bit;
       dt_state             : out array_8x4bit;
@@ -812,7 +813,8 @@ begin
         rst     => reset,               -- reset
 --        acq_rst => acq_rst_from_vmm_fsm_vec(I) or sync_acq_rst_from_ext_trig,  -- input
         -- ann added ext_trig
-        acq_rst => acq_rst_from_vmm_fsm_vec(I) or (acq_rst_from_data0(I) and int_trig) or (sync_acq_rst_from_ext_trig and not(int_trig)),  -- input
+        acq_rst => acq_rst_from_vmm_fsm_vec(I) or (acq_rst_from_data0(I) and int_trig) or (acq_rst_from_tp and int_trig) or (sync_acq_rst_from_ext_trig and not(int_trig)),  -- input
+        --acq_rst => acq_rst_from_vmm_fsm_vec(I) or (acq_rst_from_data0(I) and int_trig) or (sync_acq_rst_from_ext_trig and not(int_trig)),  -- input
         -- REMOVED ACQ_RST_FROM_DATA0
         vmm_wen             => vmm_wen_acq_rst(I),     -- or with cfg sm
         vmm_ena             => vmm_ena_acq_rst(I),     -- or with cfg sm
