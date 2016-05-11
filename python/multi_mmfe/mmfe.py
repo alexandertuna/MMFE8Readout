@@ -263,6 +263,15 @@ class MMFE:
         self.readout_runlength[24] = 1 if widget.get_active() else 0
         self.write_readout_runlength()
 
+    def external_trigger_w_pulse(self, widget):
+        if widget.get_active():
+            message = "w 0x44A1013C 1"
+            self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
+            print "Ext Trig Signals are accompanied by a pulse"
+        else:
+            message = "w 0x44A1013C 0"
+            self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
+
     def external_trigger(self, widget):
         self.readout_runlength[26] = 1 if widget.get_active() else 0
         self.ext_trig_on = self.readout_runlength[26]

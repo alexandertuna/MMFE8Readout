@@ -85,6 +85,7 @@ class MMFE:
         check_reading_str = check_reading.split()
 #        print check_reading_str #comment this out later!
         if int(check_reading_str[2],16) is 1:
+            print "found!"
             return 1
         else: 
             return 0

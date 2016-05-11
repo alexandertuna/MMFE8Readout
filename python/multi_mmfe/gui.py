@@ -173,6 +173,11 @@ class GUI:
         self.button_external_trigger = gtk.ToggleButton("External Trigger [OFF]")
         self.button_external_trigger.connect("clicked", self.external_trigger)
 
+        self.label_external_trigger_w_pulse =  gtk.Label("")
+        self.label_external_trigger_w_pulse.set_markup('<span color="red"> External Trigger W/ Pulse </span>')
+        self.button_external_trigger_w_pulse = gtk.ToggleButton("External Trigger W/ Pulse [OFF]")
+        self.button_external_trigger_w_pulse.connect("clicked", self.external_trigger_w_pulse)
+
         self.button_ext_trig_pulse = gtk.Button("Send External Trigger")
         self.button_ext_trig_pulse.connect("clicked", self.send_external_trig)
         
@@ -295,6 +300,7 @@ class GUI:
 
         self.box_mmfe.pack_start(self.button_internal_trigger, expand=False)
         self.box_mmfe.pack_start(self.button_external_trigger, expand=False)
+        self.box_mmfe.pack_start(self.button_external_trigger_w_pulse, expand=False)
         self.box_mmfe.pack_start(self.button_leaky_readout,    expand=False)
         self.box_mmfe.pack_start(self.box_pulses,           expand=False)
         self.box_mmfe.pack_start(self.box_acq_reset_count,  expand=False)
@@ -720,6 +726,12 @@ class GUI:
         widget.set_label("External Trigger [ON]" if widget.get_active() else "External Trigger [OFF]")
         for mmfe in self.current_MMFEs():
             mmfe.external_trigger(widget)
+
+    def external_trigger_w_pulse(self, widget):
+        widget.set_label("External Trigger W/ Pulse [ON]" if widget.get_active() else "External Trigger W/ Pulse [OFF]")
+        for mmfe in self.current_MMFEs():
+            mmfe.external_trigger_w_pulse(widget)
+
 
     def set_pulses(self, widget):
         try:
