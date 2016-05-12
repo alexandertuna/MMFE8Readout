@@ -768,9 +768,9 @@ architecture STRUCTURE of toplevel is
   signal clk_tp_dutycycle_cnt : std_logic_vector(19 downto 0) := x"003E8";  --10 us
 
   signal clk_tp_period_cnt_calib      : std_logic_vector(19 downto 0) := x"30D40";  --1 kHz
-  signal clk_tp_acq_rst_cnt_calib     : std_logic_vector(19 downto 0) := x"30A20";
+  --signal clk_tp_acq_rst_cnt_calib     : std_logic_vector(19 downto 0) := x"30A20";
 --996 ms
---  signal clk_tp_acq_rst_cnt_calib     : std_logic_vector(19 downto 0) := x"2F9BC";  --1 ms - 996*CKBC(25 ns)
+  signal clk_tp_acq_rst_cnt_calib     : std_logic_vector(19 downto 0) := x"2F9BC";  --1 ms - 996*CKBC(25 ns)
   
   signal acq_rst_from_tp        : std_logic := '0';
   signal vmm_di_en_from_tp      : std_logic := '0';  -- CR;
@@ -2666,7 +2666,7 @@ begin
           
         else
           vmm_di_en_vec(I)   <= '0';
-          vmm_cktk_en_vec(I) <= vmm_cktk_daq_en_vec(I)
+          vmm_cktk_en_vec(I) <= vmm_cktk_daq_en_vec(I) and not(acq_rst_from_tp)
                                 and (vmm_cktk_ext_trig_en or not(ext_trigger_in_sel));
           vmm_ckbc_all_en <= vmm_ckbc_en and not(busy_from_ext_trigger or busy_from_acq_rst);  --
           --added combined control
