@@ -88,12 +88,12 @@ if __name__=="__main__":
     for board in MMFEs:
         #threads.append(thr.Thread(target=data_take.thread1)) #this is a test thread function
         threads.append(thr.Thread(target=data_take.check_first_board_flag))
-    starting = raw_input("To start data taking, enter 1")
+    starting = raw_input("To start data taking, enter 1: ")
     if starting is "1":
         reading = 1
         for thread in threads:
             thread.start()
-    user_input = raw_input("To stop data taking, enter 0")
+    user_input = raw_input("To stop data taking, enter 0: ")
     if user_input is "0":
         print "oops, we stopped!"
         con = 0

@@ -133,7 +133,7 @@ class MMFE:
             data      = self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
 
             if data != '!Err!':
-                myfile.write(self.bcid_reg + '\t' + data + '\n')            
+                myfile.write(str(fifo_count) + '\t' + self.bcid_reg + '\t' + data + '\n')            
                 #data_list = data.split()                
         myfile.close()
 
