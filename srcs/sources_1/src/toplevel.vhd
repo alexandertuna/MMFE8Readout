@@ -768,15 +768,15 @@ architecture STRUCTURE of toplevel is
   signal clk_tp_dutycycle_cnt : std_logic_vector(19 downto 0) := x"003E8";  --10 us
 
   signal clk_tp_period_cnt_calib      : std_logic_vector(19 downto 0) := x"30D40";  --1 kHz
-  --signal clk_tp_acq_rst_cnt_calib     : std_logic_vector(19 downto 0) := x"30A20";
---996 ms
-  signal clk_tp_acq_rst_cnt_calib     : std_logic_vector(19 downto 0) := x"2F9BC";  --1 ms - 996*CKBC(25 ns)
-  
+
+  signal clk_tp_acq_rst_cnt_calib     : std_logic_vector(19 downto 0) := x"2F9C2";  --1 ms - 998*CKBC(25 ns)
+  signal clk_tp_acq_rst_off_cnt_calib : std_logic_vector(19 downto 0) := x"2FA8A";  --1 ms - 958*CKBC(25 ns)
+
   signal acq_rst_from_tp        : std_logic := '0';
-  signal vmm_di_en_from_tp      : std_logic := '0';  -- CR;
-  signal vmm_cktk_en_from_tp    : std_logic := '0';  -- CR;
-  signal vmm_wen_from_tp        : std_logic := '0';  -- CR;
-  signal vmm_ena_from_tp        : std_logic := '0';  -- CR;
+  signal reading_out            : std_logic_vector(7 downto 0)  := x"00"; --this controls when CKTK
+                                                    --is enabled
+  signal restart_cktk_cnt       : std_logic_vector(11 downto 0) := x"190"; --10 us
+  signal restart_cktk_cntr      : std_logic_vector(11 downto 0) := x"000"; --10 us
   
   signal clk_tp_dutycycle_cnt_calib : std_logic_vector(19 downto 0) := x"186A0";  -- 500 microseconds
 
@@ -885,7 +885,9 @@ architecture STRUCTURE of toplevel is
   signal turn_counter          : std_logic_vector (15 downto 0);
   signal turn_counter_captured : std_logic_vector (15 downto 0);
 
-  --ann
+  --ann  
+--  signal acq_rst_from_data0_o      : std_logic_vector(7 downto 0);
+
   signal num_ext_trig               : std_logic_vector (19 downto 0);
   signal acq_rst_from_ext_trig      : std_logic;
   signal acq_rst_from_ext_trig_d    : std_logic;
@@ -1487,8 +1489,10 @@ begin
   U_cktp_gen : process(clk_100, reset)
   begin
     if rising_edge(clk_100) then
-      if ((ext_trigger_edge = '1') and (ext_trigger_in_sel = '1')) then  --got
-        --got rid of reset for fear of messing up ext trig
+      if ((reset = '1' or ext_trigger_edge = '1') and (ext_trigger_in_sel = '1')) then  --
+        -- reset=1 or (                           and         ) should be
+        -- paolo 
+--            if (int_trig_edge = '1' or  reset = '1') then
         clk_tp_cntr <= clk_tp_period_cnt;
         clk_tp_out  <= '0';
         cktp_done   <= '0';
@@ -1552,7 +1556,7 @@ begin
             delay_counter     <= (others => '0');           --CR
             acq_rst_from_tp   <= '0';
             cktp_done_calib   <= '0';
-            rise_counter      <= (others => '0');
+            rise_counter      <= (others => '0');  -- CR
           else
             rise_counter <= rise_counter + '1';
           end if;
@@ -1572,14 +1576,26 @@ begin
               end if;
             end if;
           else
-            -- when clk_tp_cntr_calib  = X send soft rst
             if clk_tp_cntr_calib = clk_tp_acq_rst_cnt_calib then
               acq_rst_from_tp <= '1';
             end if;
---            if clk_tp_cntr_calib = clk_tp_acq_rst_off_cnt_calib then
---              acq_rst_from_tp <= '0';
---            end if;
+            if restart_cktk_cntr = restart_cktk_cnt then
+              reading_out <= x"11";
+            end if;
+            for I in 0 to 7 loop --turn of CKTK when acq_rst_from_data0 comes
+              if acq_rst_from_data0(I) = '1' then
+                reading_out(I) <= '0';
+              end if;
+            end loop;
+            if clk_tp_cntr_calib = clk_tp_acq_rst_off_cnt_calib then
+              acq_rst_from_tp <= '0';
+              restart_cktk_cntr <= (others => '0');
+            end if;
             clk_tp_cntr_calib <= clk_tp_cntr_calib + '1';
+            --count to restart CKTK
+            if clk_tp_out_calib = '1' then
+              restart_cktk_cntr <= restart_cktk_cntr + '1';
+            end if;
             if clk_tp_cntr_calib = clk_tp_dutycycle_cnt_calib then
               clk_tp_out_calib <= '0';
               delay_counter    <= (others => '0');
@@ -1587,6 +1603,8 @@ begin
           end if;
         end if;
 
+        --CR noticed the following maybe should be in if statement
+        
         if pulses = x"03e7" then        -- x"03e7" <=> 999 
           cktp_done_calib <= '0';
         else
@@ -1598,7 +1616,7 @@ begin
       end if;
     end if;
   end process CKTP_calibration;
-
+  
   -- this should really be put on a clock
   CKTP_calibration_done : process (clk_tp_out_calib, reset, int_trig_edge, ext_trigger_edge)
   begin
@@ -1725,37 +1743,29 @@ begin
     reading_fin_flag_edge <= ((not reading_fin_flag_d) and reading_fin_flag);
   end process reading_fin_edge_detect;
 
-  ext_trig_edge_detect : process(clk_100, ext_trigger_port, ext_trigger_d)
---  ext_trig_edge_detect : process(clk_100, ext_trigger_sim, ext_trigger_d)
+  ext_trig_edge_detect : process(clk_100, ext_trigger_sim, ext_trigger_d)
   begin
     --rising edge detect
     if rising_edge(clk_100) then
---      ext_trigger_d <= ext_trigger_sim;
-      ext_trigger_d <= ext_trigger_port;
+      ext_trigger_d <= ext_trigger_sim;
     end if;
-    ext_trigger_edge <= (not(ext_trigger_d) and ext_trigger_port);
---    ext_trigger_edge <= (not(ext_trigger_d) and ext_trigger_sim);
+    ext_trigger_edge <= (not(ext_trigger_d) and ext_trigger_sim);
   end process ext_trig_edge_detect;
 
-  ext_trig_edge_detect_slow : process(clk_40, ext_trigger_port, ext_trigger_d_slow)
---  ext_trig_edge_detect_slow : process(clk_40, ext_trigger_sim, ext_trigger_d_slow)
+  ext_trig_edge_detect_slow : process(clk_40, ext_trigger_sim, ext_trigger_d_slow)
   begin
     --should sustain ext_trigger_edge_slow for 50 ns after cktp_done = '1'
     if rising_edge(clk_40) then
-      ext_trigger_d_slow <= ext_trigger_port;
---      ext_trigger_d_slow <= ext_trigger_sim;
+      ext_trigger_d_slow <= ext_trigger_sim;
     end if;
-    ext_trigger_edge_slow <= (not(ext_trigger_d_slow) and ext_trigger_port);
---    ext_trigger_edge_slow <= (not(ext_trigger_d_slow) and ext_trigger_sim);
+    ext_trigger_edge_slow <= (not(ext_trigger_d_slow) and ext_trigger_sim);
   end process ext_trig_edge_detect_slow;
 
-  ext_trig_gate : process(clk_40, ext_trigger_port)
---  ext_trig_gate : process(clk_40, ext_trigger_sim)
+  ext_trig_gate : process(clk_40, ext_trigger_sim)
   begin
     --rising edge detect
     if rising_edge(clk_40) then
-      ext_trigger_sync <= ext_trigger_port;
---      ext_trigger_sync <= ext_trigger_sim;
+      ext_trigger_sync <= ext_trigger_sim;
     end if;
   end process ext_trig_gate;
 
@@ -1766,8 +1776,7 @@ begin
       if ext_trigger_in_sel = '1' then
 --          if ext_trigger_sim = '1' then
 --          if ext_trigger_edge_slow = '1' and cktp_done = '1' then
-        if ext_trigger_port = '1' and cktp_done = '1' then
---        if ext_trigger_sim = '1' and cktp_done = '1' then
+        if ext_trigger_sim = '1' and cktp_done = '1' then
           ext_trigger_flag    <= '1';
           ext_trigger_delayed <= ext_trigger_flag;
         else
@@ -2657,28 +2666,13 @@ begin
                                 or (reset_new_edge and (not vmm_acq_rst_running(I)))
                                 or (vmm_ena_vmm_cfg_sm_vec(I) and (not vmm_acq_rst_running(I)));
 
-        --elsif acq_rst_from_tp = '1' then  -- CR
-        --  vmm_di_en_vec(I)   <= vmm_di_en_from_tp;
-        --  vmm_cktk_en_vec(I) <= vmm_cktk_en_from_tp;
-        --  vmm_wen_vec(I)     <= vmm_wen_from_tp;
-        --  vmm_ena_vec(I)     <= vmm_ena_from_tp;
-     
-          
         else
           vmm_di_en_vec(I)   <= '0';
-          vmm_cktk_en_vec(I) <= vmm_cktk_daq_en_vec(I) and not(acq_rst_from_tp)
-                                and (vmm_cktk_ext_trig_en or not(ext_trigger_in_sel));
+          vmm_cktk_en_vec(I) <= vmm_cktk_daq_en_vec(I) and reading_out(I) and not(acq_rst_from_tp);
+--          vmm_cktk_en_vec(I) <= vmm_cktk_daq_en_vec(I) and not(acq_rst_from_tp)
+--                                  and (vmm_cktk_ext_trig_en or not(ext_trigger_in_sel));
           vmm_ckbc_all_en <= vmm_ckbc_en and not(busy_from_ext_trigger or busy_from_acq_rst);  --
-          --added combined control
-
---              vmm_ena_vmm_cfg_sm_vec( I) <= vmm_ena_vmm_cfg_sm;
           vmm_wen_vec(I) <= vmm_wen_acq_rst(I);  --
-
-          -----------------------------------------------------------
---                    vmm_wen_vec(I)     <= vmm_wen_acq_rst(I);
---                    vmm_ena_vec(I)     <= vmm_ena_acq_rst(I) or (vmm_ena_vmm_cfg_sm_vec(I) and (not vmm_acq_rst_running(I)));
-          -- ann changed
---                    vmm_ena_vec(I)     <= vmm_ena_acq_rst(I) or (reset_new_edge and (not vmm_acq_rst_running(I))) or (vmm_ena_vmm_cfg_sm_vec(I) and (not vmm_acq_rst_running(I)));
           vmm_ena_vec(I) <= vmm_ena_acq_rst(I)
                                 or (reset_new_edge and (not vmm_acq_rst_running(I)))
                                 or (vmm_ena_vmm_cfg_sm_vec(I) and (not vmm_acq_rst_running(I)));
