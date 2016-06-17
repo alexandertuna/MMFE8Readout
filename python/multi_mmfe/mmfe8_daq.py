@@ -16,6 +16,8 @@ class MMFE:
         print "Creating instance of MMFE_DAQ"
 
         self.VMMs = []
+        self.cyclenum = 0
+        self.num_trigOld = 0
         for _ in range(nvmms):
             self.VMMs.append(VMM())
 
@@ -40,6 +42,7 @@ class MMFE:
         self.mmfeID = 0
         self.ipAddr = ["127.0.0.1",
                        "192.168.0.130",
+                       "192.168.0.100",
                        "192.168.0.101",
                        "192.168.0.102",
                        "192.168.0.103",
@@ -84,16 +87,35 @@ class MMFE:
         check_reading = self.udp.udp_client(msg, self.UDP_IP, self.UDP_PORT)
         check_reading_str = check_reading.split()
 #        print check_reading_str #comment this out later!
-        if int(check_reading_str[2],16) is 1:
-            print "found!"
+        ready = 0
+#        print check_reading_str[2]
+#        ready = int(check_reading_str[2],16)
+        try:
+            ready = int(check_reading_str[2],16)
+        except ValueError:
+            print check_reading_str[2]
+        if ready is 1:
+#            print "found!"
             return 1
         else: 
             return 0
 
+    def readOut_BCID(self, board_id):        
+        bcidreg = "r 0x44A1014C 1" # read bcid_captured and external_trigger number in FPGA                              
+        check_bcidreg = self.udp.udp_client(bcidreg,self.UDP_IP,self.UDP_PORT)
+        check_bcidreg_str = check_bcidreg.split()
+        self.bcid_reg = check_bcidreg_str[2]
+        word = int(self.bcid_reg, 16)
+        num_trig = int(word & 1048575)
+        if (self.num_trigOld > num_trig):
+            self.cyclenum = self.cyclenum + 1
+        self.num_trigOld = num_trig
+        return self.bcid_reg
+
     def daq_readOut_quiet(self, board_id):
         data       = None
         fifo_count = 0
-        attempts   = 10
+        attempts   = 1 #changed from 10
 
         while fifo_count == 0 and attempts > 0:
             attempts -= 1
@@ -101,39 +123,46 @@ class MMFE:
             data = self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
             if data != None:
                 data_list  = data.split(" ")
-                fifo_count = int(data_list[2], 16)
-                #            time.sleep(1)
+                try: 
+                    fifo_count = int(data_list[2], 16)
+                except ValueError:
+                    fifo_count = 0
 
-        print "FIFOCNT ", fifo_count
+        #print "FIFOCNT ", fifo_count
         if data == None or fifo_count == 0:
-            print "Warning: Did not receive data. Stop readout."
+            #print "Warning: Did not receive data. Stop readout."
             return
         if fifo_count == 0:
-            print "Warning: found 0 FIFO counts. Stop readout."
+            #print "Warning: found 0 FIFO counts. Stop readout."
             return
-        if fifo_count % 2 != 0:
-            print "Warning: Lost one count in fifo reading."
-            fifo_count -= 1
+        #if fifo_count % 2 != 0:
+            #print "Warning: Lost one count in fifo reading."
+            #fifo_count -= 1
 
-        bcidreg = "r 0x44A1014C 1" # read bcid_captured and external_trigger number in FPGA                              
-        check_bcidreg = self.udp.udp_client(bcidreg,self.UDP_IP,self.UDP_PORT)
-        check_bcidreg_str = check_bcidreg.split()
-        self.bcid_reg = check_bcidreg_str[2]
+        # bcidreg = "r 0x44A1014C 1" # read bcid_captured and external_trigger number in FPGA                              
+        # check_bcidreg = self.udp.udp_client(bcidreg,self.UDP_IP,self.UDP_PORT)
+        # check_bcidreg_str = check_bcidreg.split()
+        # self.bcid_reg = check_bcidreg_str[2]
 
         peeks_per_cycle = 10
-        cycles    = fifo_count / peeks_per_cycle
-        remainder = fifo_count % peeks_per_cycle
-
+        # only allow 20 words in FIFO to be read
+        if fifo_count <= 20:
+            cycles    = (fifo_count / peeks_per_cycle)
+            remainder = fifo_count % peeks_per_cycle
+        else:
+            cycles = 20 / peeks_per_cycle
+            remainder = 0
         myfile = open('mmfe8TestQuiet_%i.dat' %(board_id), 'a')
 
         for cycle in reversed(xrange(1+cycles)):
-            
+            if (cycle is 0 and remainder is 0):
+                break
+         
             peeks     = peeks_per_cycle if cycle > 0 else remainder
             message   = "k 0x44A10010 %s" % (peeks)
             data      = self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
-
-            if data != '!Err!':
-                myfile.write(str(fifo_count) + '\t' + self.bcid_reg + '\t' + data + '\n')            
+            if data != '!Err':
+                myfile.write(str(time.time()) + '\t' + str(fifo_count) + '\t' + str(self.cyclenum) + '\t' + self.bcid_reg + '\t' + data + '\n')            
                 #data_list = data.split()                
         myfile.close()
 
@@ -155,13 +184,8 @@ class MMFE:
     def start(self, board_id):
         self.control[2] = 1
         self.write_control()
-
-        if self.ext_trig_on is 0:
-            print "turn on ext trig!!"
-        else:
-            self.daq_readOut_quiet(board_id)
+        self.daq_readOut_quiet(board_id)
         #time.sleep(1)
-
         self.control[2] = 0
         self.write_control()
 

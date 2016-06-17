@@ -51,14 +51,21 @@ class data_acq:
             pass
                 
     def check_first_board_flag(self):
+        bcidold = 0
         while reading is 1:
             firstboard = MMFEs[0]
             ready = firstboard.check_for_data_flag()
             if ready is 1:
+                print "found flag!"
                 ind = 0
+                # need to change this indexing for multiboard functionality
                 for board in MMFEs:
+                    # only allow one readout per trigger
+                    bcidtemp = board.readOut_BCID(ind)
+                    if bcidold == bcidtemp:
+                        continue
+                    bcidold = bcidtemp
                     board.start(ind)
-                    board.daq_readOut_quiet(ind)
 #                    ind = ind + 1
         print "done reading!\n"
         
@@ -75,7 +82,7 @@ if __name__=="__main__":
     data_take = data_acq()
     global con
     con = 1
-    
+
     # setting up board ips
     for mmfe in xrange(nmmfes):
         ip_addresses.append("192.168.0." + raw_input("Enter in %i IP Address: " % (mmfe+1)))

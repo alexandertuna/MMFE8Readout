@@ -9,11 +9,11 @@ def main(argv):
     try:
         opts, args = getopt.getopt(argv, "hi:o:", ["ifile=", "ofile="])
     except getopt.GetoptError:
-        print 'decode.py -i <inputfile> -o <outputfile>'
+        print 'decodeSimple.py -i <inputfile> -o <outputfile>'
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print 'decode.py -i <inputfile> -o <outputfile>'
+            print 'decodeSimple.py -i <inputfile> -o <outputfile>'
             sys.exit()
         elif opt in ("-i", "--ifile"):
             inputfile = arg
@@ -22,13 +22,13 @@ def main(argv):
 
     datafile = open(inputfile, 'r')
     decodedfile = open(outputfile, 'w')
+    decodedfile.write('TimeStamp\tFIFO\tCycle\tBCIDtrig\tNtrig\tCH\tPDO\tTDO\tBCID\tVMM\tMMFE8\n')
 #    num_trig = 0
     for line in datafile:
         thisline = line.split()
         if len(thisline) < 2:
             continue
         if thisline[4]=='!Err':
-            print "skip"
             continue
         machinetime = float(thisline[0])
         fifocount = int(thisline[1])
@@ -37,34 +37,22 @@ def main(argv):
 #        if num_trig != int(fifotrig & 1048575):
 #            numwordsread = 0
         num_trig = int(fifotrig & 1048575)
-        # print "num_trig: ",num_trig,"\n"
         fifotrig = fifotrig >> 20
         bcid_trig = int(fifotrig & 4095)
-        # print "bcid_trig: ",bcid_trig,"\n"
-        # print "thisline: ", thisline,"\n"
 #        linelength = 0
 #        for word in xrange(4,len(thisline)):
 #            if int(thisline[word],16) > 0:
 #                linelength = linelength + 1
 #        numwordsread = numwordsread + linelength
         for iword in xrange(6, (len(thisline)), 2): #get rid of peak command/address and fifo bcid/num trig
-            # print "iword ",iword
-            # print thisline[iword]
             word0 = int(thisline[iword],   16)
             word1 = int(thisline[iword+1], 16)
-            # print word0
-            nonzero = False
-            if word0 > 0:
-                nonzero = True
-                
-            # if not word0 > 0:
-            #     print "Out of order or no data."
-            #     continue
+            if not word0 > 0:
+                print "Out of order or no data."
+                continue
             
             word0 = word0 >> 2       # get rid of first 2 bits (threshold)
             addr  = (word0 & 63) + 1 # get channel number as on GUI
-            if not nonzero:
-                addr = 0 # if the whole word is zero, make ch num 0 as well
             word0 = word0 >> 6       # get rid of address
             amp   = word0 & 1023     # get amplitude
             
@@ -80,18 +68,13 @@ def main(argv):
             word1 = word1 >> 12      # later we will get the turn number
             word1 = word1 >> 4       # 4 bits of zeros?
             immfe = int(word1 & 255) # do we need to convert this?
-            
-            to_print = "WORD0=%s WORD1=%s CHword=%s PDO=%s TDO=%s BCID=%s BCIDgray=%s VMM=%s MMFE8=%s"
-            header = "MachineTime=%s FIFO=%s Cycle=%s BCIDtrig=%s Ntrig=%s "
-            decodedfile.write(header % (machinetime, fifocount, cycle, bcid_trig, num_trig) + to_print % (thisline[iword], thisline[iword+1],
-                                                                                      str(addr),     str(amp), str(timing),
-                                                                                      str(bcid_int), str(bcid_gray), 
-                                                                                      str(vmm), str(immfe)) + '\n')
-            # header = "fifo_cnt = %s num_words_read = %s bcid_trig = %s num_trig = %s "
-            # decodedfile.write(header % (fifocount, numwordsread, bcid_trig, num_trig) + to_print % (thisline[iword], thisline[iword+1],
+
+            decodedfile.write(str(machinetime) + '\t' + str(fifocount) + '\t' + str(cycle) + '\t' + str(bcid_trig) + '\t' + str(num_trig) + '\t' + '\t'+ str(addr) + '\t' + str(amp) + '\t' + str(timing) + '\t' + str(bcid_int) + '\t'+ str(vmm) +'\t'+ str(immfe)+'\n')
+            # to_print = "word0 = %s word1 = %s addr = %s amp = %s time = %s bcid = %s vmm = %s mmfe = %s"
+            # Header = "fifo_cnt = %s bcid_trig = %s num_trig = %s "
+            # decodedfile.write(header % (fifocount, bcid_trig, num_trig) + to_print % (thisline[iword], thisline[iword+1],
             #                                                                           str(addr),     str(amp), str(timing),
             #                                                                           str(bcid_int), str(vmm), str(immfe)) + '\n')
-
     decodedfile.close()
     datafile.close()
     print "done decoding, exiting \n"
