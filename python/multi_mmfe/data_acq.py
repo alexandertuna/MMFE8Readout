@@ -56,7 +56,7 @@ class data_acq:
             firstboard = MMFEs[0]
             ready = firstboard.check_for_data_flag()
             if ready is 1:
-                print "found flag!"
+                # print "found flag!"
                 ind = 0
                 # need to change this indexing for multiboard functionality
                 for board in MMFEs:

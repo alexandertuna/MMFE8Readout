@@ -128,7 +128,7 @@ class MMFE:
                 except ValueError:
                     fifo_count = 0
 
-        #print "FIFOCNT ", fifo_count
+        print "FIFOCNT ", fifo_count
         if data == None or fifo_count == 0:
             #print "Warning: Did not receive data. Stop readout."
             return
