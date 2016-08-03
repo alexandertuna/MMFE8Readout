@@ -162,7 +162,9 @@ class MMFE:
             message   = "k 0x44A10010 %s" % (peeks)
             data      = self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
             if data != '!Err':
-                myfile.write(str(time.time()) + '\t' + str(fifo_count) + '\t' + str(self.cyclenum) + '\t' + self.bcid_reg + '\t' + data + '\n')            
+                timestamp = time.time()*pow(10,9) #ns
+                myfile.write('%f'%timestamp + '\t' + str(fifo_count) + '\t' + str(self.cyclenum) + '\t' + self.bcid_reg + '\t' + data + '\n')     
+                #myfile.write(('%f'%timestamp)[:10] + '\t' + ('%f'%timestamp)[10:]  + '\t' + str(fifo_count) + '\t' + str(self.cyclenum) + '\t' + self.bcid_reg + '\t' + data + '\n')            
                 #data_list = data.split()                
         myfile.close()
 
