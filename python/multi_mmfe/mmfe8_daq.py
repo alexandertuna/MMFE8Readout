@@ -152,7 +152,7 @@ class MMFE:
         else:
             cycles = 20 / peeks_per_cycle
             remainder = 0
-        myfile = open('mmfe8TestQuiet_%i.dat' %(board_id), 'a')
+        myfile = open('mmfe8TestQuiet_%i.dat' %(self.mmfeID), 'a')
 
         for cycle in reversed(xrange(1+cycles)):
             if (cycle is 0 and remainder is 0):
@@ -200,7 +200,7 @@ class MMFE:
         self.UDP_IP = ip_address
 
         try:
-            self.mmfeID = self.ipAddr.index(self.UDP_IP)
+            self.mmfeID = int(self.UDP_IP[-3:])
         except:
             print "Warning: Did not find %s in list of valid IP addresses. Set mmfeID=0." % (self.UDP_IP)
             self.mmfeID = 0
