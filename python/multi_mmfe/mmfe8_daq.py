@@ -128,6 +128,7 @@ class MMFE:
                 except ValueError:
                     fifo_count = 0
 
+        print "Board ID ", self.mmfeID
         print "FIFOCNT ", fifo_count
         if data == None or fifo_count == 0:
             #print "Warning: Did not receive data. Stop readout."
@@ -145,12 +146,12 @@ class MMFE:
         # self.bcid_reg = check_bcidreg_str[2]
 
         peeks_per_cycle = 10
-        # only allow 20 words in FIFO to be read
-        if fifo_count <= 20:
+        # only allow 80 words in FIFO to be read
+        if fifo_count <= 80:
             cycles    = (fifo_count / peeks_per_cycle)
             remainder = fifo_count % peeks_per_cycle
         else:
-            cycles = 20 / peeks_per_cycle
+            cycles = 80 / peeks_per_cycle
             remainder = 0
         myfile = open('mmfe8TestQuiet_%i.dat' %(self.mmfeID), 'a')
 
