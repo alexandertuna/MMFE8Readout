@@ -1,3 +1,7 @@
+# Sequential data reading from the boards, depends on mmfe8_daq
+
+# A.Wang, last edited Aug 11, 2016
+
 import time
 import numpy as np
 import sys
@@ -17,11 +21,6 @@ nvmms     = 8
 nchannels = 64
 ip_addresses = []
 MMFEs = []
-# reading = 0
-# waiting = 0
-# ready = 0
-# notchecking = 1
-# all_done = []
 
 class data_acq:
     
@@ -52,7 +51,6 @@ class data_acq:
             if self.reading is 1:
                 found = MMFEs[0].check_for_data_flag()
                 if found is 1:
-                    #print "found"
                     bcidtemp = MMFEs[0].readOut_BCID(0)
                     if (bcidold == bcidtemp):
                         continue
@@ -67,18 +65,15 @@ class data_acq:
         ind = 0
         start = 0
         while not self.exit.is_set():
-#            print "chjeck"
             if self.reading is 0:
                 break
             with cond:
                 cond.wait()
                 start = time.time()
                 for board in MMFEs:
-#                    print "before read", time.time()-start
                     ind = ind + 1
                     bcidnow.append(board.readOut_BCID(0))
                     board.start(0)
-                    print "after read", time.time()-start
                 cond2.acquire()
                 cond2.notify()
                 cond2.release()

@@ -1,3 +1,6 @@
+# 80 words allowed for readout per board
+
+
 import os
 import time
 import binstr
