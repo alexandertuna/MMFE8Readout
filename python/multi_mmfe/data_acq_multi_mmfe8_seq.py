@@ -52,7 +52,7 @@ class data_acq:
             if self.reading is 1:
                 found = MMFEs[0].check_for_data_flag()
                 if found is 1:
-                    print "found"
+                    #print "found"
                     bcidtemp = MMFEs[0].readOut_BCID(0)
                     if (bcidold == bcidtemp):
                         continue

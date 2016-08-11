@@ -30,10 +30,11 @@ def main(argv):
             continue
         if thisline[4]=='!Err':
             continue
-        machinetime = float(thisline[0])
-        fifocount = int(thisline[1])
-        cycle = int(thisline[2])
-        fifotrig = int(thisline[3], 16)
+        boardid = int(thisline[0])
+        machinetime = float(thisline[1])
+        fifocount = int(thisline[2])
+        cycle = int(thisline[3])
+        fifotrig = int(thisline[4], 16)
 #        if num_trig != int(fifotrig & 1048575):
 #            numwordsread = 0
         num_trig = int(fifotrig & 1048575)
@@ -44,7 +45,7 @@ def main(argv):
 #            if int(thisline[word],16) > 0:
 #                linelength = linelength + 1
 #        numwordsread = numwordsread + linelength
-        for iword in xrange(6, (len(thisline)), 2): #get rid of peak command/address and fifo bcid/num trig
+        for iword in xrange(7, (len(thisline)), 2): #get rid of peak command/address and fifo bcid/num trig
             word0 = int(thisline[iword],   16)
             word1 = int(thisline[iword+1], 16)
             if not word0 > 0:
@@ -69,7 +70,7 @@ def main(argv):
             word1 = word1 >> 4       # 4 bits of zeros?
             immfe = int(word1 & 255) # do we need to convert this?
 
-            decodedfile.write(str(machinetime) + '\t' + str(fifocount) + '\t' + str(cycle) + '\t' + str(bcid_trig) + '\t' + str(num_trig) + '\t' + '\t'+ str(addr) + '\t' + str(amp) + '\t' + str(timing) + '\t' + str(bcid_int) + '\t'+ str(vmm) +'\t'+ str(immfe)+'\n')
+            decodedfile.write("%0.f"%(machinetime) + '\t' + str(fifocount) + '\t' + str(cycle) + '\t' + str(bcid_trig) + '\t' + str(num_trig) + '\t' + '\t'+ str(addr) + '\t' + str(amp) + '\t' + str(timing) + '\t' + str(bcid_int) + '\t'+ str(vmm) +'\t'+ str(boardid)+'\n')
             # to_print = "word0 = %s word1 = %s addr = %s amp = %s time = %s bcid = %s vmm = %s mmfe = %s"
             # Header = "fifo_cnt = %s bcid_trig = %s num_trig = %s "
             # decodedfile.write(header % (fifocount, bcid_trig, num_trig) + to_print % (thisline[iword], thisline[iword+1],

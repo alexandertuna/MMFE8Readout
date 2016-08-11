@@ -153,7 +153,8 @@ class MMFE:
         else:
             cycles = 80 / peeks_per_cycle
             remainder = 0
-        myfile = open('mmfe8TestQuiet_%i.dat' %(self.mmfeID), 'a')
+        myfile = open('mmfe8TestQuiet.dat', 'a')
+#        myfile = open('mmfe8TestQuiet_%i.adat' %(self.mmfeID), 'a')
 
         for cycle in reversed(xrange(1+cycles)):
             if (cycle is 0 and remainder is 0):
@@ -164,7 +165,7 @@ class MMFE:
             data      = self.udp.udp_client(message, self.UDP_IP, self.UDP_PORT)
             if data != '!Err':
                 timestamp = time.time()*pow(10,9) #ns
-                myfile.write('%f'%timestamp + '\t' + str(fifo_count) + '\t' + str(self.cyclenum) + '\t' + self.bcid_reg + '\t' + data + '\n')     
+                myfile.write(str(self.mmfeID) + '\t' + '%f'%timestamp + '\t' + str(fifo_count) + '\t' + str(self.cyclenum) + '\t' + self.bcid_reg + '\t' + data + '\n')     
                 #myfile.write(('%f'%timestamp)[:10] + '\t' + ('%f'%timestamp)[10:]  + '\t' + str(fifo_count) + '\t' + str(self.cyclenum) + '\t' + self.bcid_reg + '\t' + data + '\n')            
                 #data_list = data.split()                
         myfile.close()

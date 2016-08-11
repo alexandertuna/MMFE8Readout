@@ -30,10 +30,11 @@ def main(argv):
         if thisline[4]=='!Err':
             print "skip"
             continue
-        machinetime = float(thisline[0])
-        fifocount = int(thisline[1])
-        cycle = int(thisline[2])
-        fifotrig = int(thisline[3], 16)
+        boardid = int(thisline[0])
+        machinetime = float(thisline[1])
+        fifocount = int(thisline[2])
+        cycle = int(thisline[3])
+        fifotrig = int(thisline[4], 16)
 #        if num_trig != int(fifotrig & 1048575):
 #            numwordsread = 0
         num_trig = int(fifotrig & 1048575)
@@ -47,7 +48,7 @@ def main(argv):
 #            if int(thisline[word],16) > 0:
 #                linelength = linelength + 1
 #        numwordsread = numwordsread + linelength
-        for iword in xrange(6, (len(thisline)), 2): #get rid of peak command/address and fifo bcid/num trig
+        for iword in xrange(7, (len(thisline)), 2): #get rid of peak command/address and fifo bcid/num trig
             # print "iword ",iword
             # print thisline[iword]
             word0 = int(thisline[iword],   16)
@@ -82,11 +83,11 @@ def main(argv):
             immfe = int(word1 & 255) # do we need to convert this?
             
             to_print = "WORD0=%s WORD1=%s CHword=%s PDO=%s TDO=%s BCID=%s BCIDgray=%s VMM=%s MMFE8=%s"
-            header = "MachineTime=%s FIFO=%s Cycle=%s BCIDtrig=%s Ntrig=%s "
+            header = "MachineTime=%0.f FIFO=%s Cycle=%s BCIDtrig=%s Ntrig=%s "
             decodedfile.write(header % (machinetime, fifocount, cycle, bcid_trig, num_trig) + to_print % (thisline[iword], thisline[iword+1],
                                                                                       str(addr),     str(amp), str(timing),
                                                                                       str(bcid_int), str(bcid_gray), 
-                                                                                      str(vmm), str(immfe)) + '\n')
+                                                                                      str(vmm), str(boardid)) + '\n')
             # header = "fifo_cnt = %s num_words_read = %s bcid_trig = %s num_trig = %s "
             # decodedfile.write(header % (fifocount, numwordsread, bcid_trig, num_trig) + to_print % (thisline[iword], thisline[iword+1],
             #                                                                           str(addr),     str(amp), str(timing),
