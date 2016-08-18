@@ -1,9 +1,10 @@
 #!/usr/bin/python
 
 # Simpler decoded output format
-# Columns of TimeStamp, FIFO count, Cycle, BCID of trigger, Trigger number, Channel, PDO, TDO, BCID of hit, VMM number, and MMFE8 Board ID
+# HEADER: "EventNum", trigger number (with cycle), Timestamp in sec, Timestamp in nsec, BCID of trigger
+# Columns of VMM Channel, PDO, TDO, BCID of hit, MMFE8 Board ID, FIFO count from that Board
 
-# A.Wang, last edited Aug 11, 2016
+# A.Wang, last edited Aug 18, 2016
 
 
 import sys, getopt,binstr
@@ -28,7 +29,10 @@ def main(argv):
 
     datafile = open(inputfile, 'r')
     decodedfile = open(outputfile, 'w')
-    decodedfile.write('TimeStamp\tFIFO\tCycle\tBCIDtrig\tNtrig\tCH\tPDO\tTDO\tBCID\tVMM\tMMFE8\n')
+
+    eventnum = 0
+#    decodedfile.write('TimeStamp\tFIFO\tCycle\tBCIDtrig\tNtrig\tCH\tPDO\tTDO\tBCID\tVMM\tMMFE8\n')
+
 
     for line in datafile:
         thisline = line.split()
@@ -39,6 +43,8 @@ def main(argv):
         boardid = int(thisline[0])
         machinetime = float(thisline[1])
         fifocount = int(thisline[2])
+        if fifocount%2 != 0:
+            print "LOST A WORD!!!!!!!!!"
         cycle = int(thisline[3])
         fifotrig = int(thisline[4], 16)
         num_trig = int(fifotrig & 1048575)
@@ -69,7 +75,14 @@ def main(argv):
             word1 = word1 >> 4       # 4 bits of zeros?
             immfe = int(word1 & 255) # do we need to convert this?
 
-            decodedfile.write("%0.f"%(machinetime) + '\t' + str(fifocount) + '\t' + str(cycle) + '\t' + str(bcid_trig) + '\t' + str(num_trig) + '\t' + '\t'+ str(addr) + '\t' + str(amp) + '\t' + str(timing) + '\t' + str(bcid_int) + '\t'+ str(vmm) +'\t'+ str(boardid)+'\n')
+            timestamp = "%.f"%(machinetime) #convert machine time to right format
+            if int(num_trig) != int(eventnum):
+                decodedfile.write("EventNum " + str((num_trig+1)+pow(2,20)*cycle) + " Sec " + timestamp[:len(timestamp)-9] + " NS " + timestamp[len(timestamp)-9:len(timestamp)] + " BCIDtrig " + str(bcid_trig) + '\n')
+            eventnum = num_trig
+            decodedfile.write(str(vmm) + ' ' + str(addr) + ' ' + str(amp) + ' ' + str(timing) + ' ' + str(bcid_int) + ' '+ str(boardid)+ ' ' + str(fifocount/2) + '\n')
+
+            # old format
+            # decodedfile.write("%0.f"%(machinetime) + '\t' + str(fifocount) + '\t' + str(cycle) + '\t' + str(bcid_trig) + '\t' + str(num_trig) + '\t' + '\t'+ str(addr) + '\t' + str(amp) + '\t' + str(timing) + '\t' + str(bcid_int) + '\t'+ str(vmm) +'\t'+ str(boardid)+'\n')
 
     decodedfile.close()
     datafile.close()
