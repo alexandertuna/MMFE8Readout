@@ -77,7 +77,7 @@ def main(argv):
 
             timestamp = "%.f"%(machinetime) #convert machine time to right format
             if int(num_trig) != int(eventnum):
-                decodedfile.write("EventNum " + str((num_trig+1)+pow(2,20)*cycle) + " Sec " + timestamp[:len(timestamp)-9] + " NS " + timestamp[len(timestamp)-9:len(timestamp)] + " BCIDtrig " + str(bcid_trig) + '\n')
+                decodedfile.write("EventNum " + str((num_trig)+pow(2,20)*cycle) + " Sec " + timestamp[:len(timestamp)-9] + " NS " + timestamp[len(timestamp)-9:len(timestamp)] + " BCIDtrig " + str(bcid_trig) + '\n')
             eventnum = num_trig
             decodedfile.write(str(vmm) + ' ' + str(addr) + ' ' + str(amp) + ' ' + str(timing) + ' ' + str(bcid_int) + ' '+ str(boardid)+ ' ' + str(fifocount/2) + '\n')
 
