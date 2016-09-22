@@ -3,7 +3,13 @@
 import sys
 
 SC_LINE_LENGTH = 5
-num_dup = 0
+num_dup_other = 0
+num_chdup = 0
+num_dup_105 = 0
+num_events = 0
+dup_cntr = {'5 6 109': 0, '7 64 107': 0, '7 3 111': 0, '7 2 101': 0, '1 12 109': 0, '3 5 111':0,
+            '5 2 112': 0, '1 2 109': 0, '3 2 111': 0, '7 1 101': 0, '7 3 101': 0, '5 22 111':0, '7 51 101':0}
+
 
 def open_file(name, mode):
 	'''
@@ -117,10 +123,12 @@ def write_buffers(sc_buff, mm_buff, out_file):
         seen1 = set()
 	for i in range(1, len(mm_buff)):
                 curr_mm_line = mm_buff[i]
-                if curr_mm_line in seen1:
+                data_line = curr_mm_line.split()
+                data_check = str(data_line[0]) + ' ' + str(data_line[1]) + ' ' + str(data_line[5])
+                if data_check in seen1:
                         mm_hits = mm_hits-1
                 else:
-                        seen1.add(curr_mm_line)
+                        seen1.add(data_check)
                         
 
         if (len(sc_buff) < 1  or len(mm_buff) < 1):
@@ -135,15 +143,33 @@ def write_buffers(sc_buff, mm_buff, out_file):
 	for i in range(1,len(sc_buff)):
 		out_file.write(sc_buff[i])
 
-        seen2 = set()
+        seen3 = set()
+        event_flag = False
+        print "EVENT: ", mm_evt
+        global num_events
+        num_events = num_events + 1
 	for i in range(1, len(mm_buff)):
                 curr_mm_line = mm_buff[i]
-                if curr_mm_line in seen2:
-                        global num_dup
-                        num_dup = num_dup + 1
-                        continue
+                data_line = curr_mm_line.split()
+                data_check = str(data_line[0]) + ' ' + str(data_line[1]) + ' ' + str(data_line[5])
+                if data_check in seen3:
+                        if (event_flag is False):
+                                if (str(data_line[5])=='105'):
+                                        global num_dup_105
+                                        num_dup_105 = num_dup_105 + 1
+                                elif not ((data_check == '5 22 111') or (data_check == '7 64 107')):
+                                        global num_dup_other
+                                        num_dup_other = num_dup_other + 1
+                                global num_chdup
+                                num_chdup = num_chdup + 1
+                                global dup_cntr
+                                for hit, count in dup_cntr.items():
+                                        if (data_check == hit):
+                                                dup_cntr[hit] = dup_cntr[hit] + 1
+                                print curr_mm_line
+                                event_flag = True
                 else:
-                        seen2.add(curr_mm_line)
+                        seen3.add(data_check)
 		        out_file.write(" MM " + mm_buff[i])
 
 	out_file.write("========= \n")
@@ -264,5 +290,9 @@ if __name__ == '__main__':
 		offset = int(sys.argv[4])
 		print "Merging files %s and %s using offset %d" % (mm_name, scint_name, offset)
 		merge_events(mm_name, scint_name, out_name, offset)
-                print "\nTotal number of duplicates %d" %(num_dup)
+                print "\nTotal number of analyzed events %d" %(num_events)
+                print "\nTotal number of duplicates %d, Board 105 duplicates %d, others %d" %(num_chdup, num_dup_105, num_dup_other)
+#                print "\nTotal number of duplicates %d, Channel duplicates %d, %d, %d" %(num_dup, num_chdup, num_chdup2, num_dup_105)
+                for hit, count in dup_cntr.items():
+                        print "Count: ",hit, " ", count
 
